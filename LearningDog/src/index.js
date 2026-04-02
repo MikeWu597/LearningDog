@@ -27,7 +27,8 @@ app.get('/', (_req, res) => {
 
 setupSocket(io);
 
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`LearningDog server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`LearningDog server running on http://${HOST}:${PORT}`);
 });

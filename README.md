@@ -55,7 +55,9 @@
 cd LearningDog
 npm install
 node src/index.js
-# 默认监听 http://localhost:3000
+# 默认监听 http://0.0.0.0:3000
+# PowerShell 自定义启动:
+# $env:HOST="0.0.0.0"; $env:PORT="3000"; node src/index.js
 ```
 
 ### PC 客户端（开发模式）
