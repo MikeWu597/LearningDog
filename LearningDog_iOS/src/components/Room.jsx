@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { NavBar, Button, Toast, Space, Popup } from 'antd-mobile';
+import { NavBar, Button, Toast, Space } from 'antd-mobile';
 import { useApp } from '../App';
 import { apiLeaveRoom, apiStartFocus, apiStopFocus } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
@@ -121,7 +121,7 @@ export default function Room() {
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#1a1a2e' }}>
+    <div className="mobile-screen mobile-screen-dark">
       <NavBar
         onBack={handleLeave}
         style={{ background: '#16213e', color: '#fff', '--adm-color-text': '#fff' }}
@@ -147,7 +147,7 @@ export default function Room() {
         自习室
       </NavBar>
 
-      <div style={{ flex: 1, padding: 4, overflow: 'hidden' }}>
+      <div className="mobile-main" style={{ padding: 4, overflow: 'hidden' }}>
         <VideoGrid
           gridSize={gridSize}
           localVideoRef={localVideoRef}

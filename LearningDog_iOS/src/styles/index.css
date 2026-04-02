@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -21,7 +26,44 @@ video {
   display: block;
 }
 
-/* Safe area padding for iOS */
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.mobile-screen {
+  height: 100dvh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-top: max(var(--safe-area-top), 8px);
+  padding-bottom: max(var(--safe-area-bottom), 8px);
+}
+
+.mobile-screen-light {
+  background: #f5f5f5;
+}
+
+.mobile-screen-dark {
+  background: #1a1a2e;
+}
+
+.mobile-screen-center {
+  justify-content: center;
+  align-items: center;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.mobile-main {
+  flex: 1;
+  min-height: 0;
+}
+
+.mobile-card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }

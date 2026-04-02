@@ -37,8 +37,8 @@ export default function ServerConfig({ onConnected }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', padding: 24, background: '#f5f5f5' }}>
-      <div style={{ width: '100%', maxWidth: 360, background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+    <div className="mobile-screen mobile-screen-light mobile-screen-center">
+      <div className="mobile-card">
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🐕</div>
           <div style={{ fontSize: 20, fontWeight: 'bold' }}>LearningDog</div>

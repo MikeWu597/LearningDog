@@ -40,10 +40,10 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div className="mobile-screen mobile-screen-light">
       <NavBar onBack={() => navigate('/rooms')}>用户设置</NavBar>
 
-      <div style={{ padding: 16 }}>
+      <div className="mobile-main" style={{ padding: 16, overflow: 'auto' }}>
         <List header="账户信息">
           <List.Item title="UUID (身份标识)" description="重装应用后输入此UUID可恢复账户">
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>

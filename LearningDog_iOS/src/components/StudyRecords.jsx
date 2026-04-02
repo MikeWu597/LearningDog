@@ -97,14 +97,14 @@ export default function StudyRecords() {
   const todayRecord = daily.find(d => d.date === dayjs().format('YYYY-MM-DD'));
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div className="mobile-screen mobile-screen-light">
       <NavBar onBack={() => navigate('/rooms')} right={
         <Button size="mini" onClick={exportPoster}>导出海报</Button>
       }>
         学习记录
       </NavBar>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+      <div className="mobile-main" style={{ overflow: 'auto', padding: 12 }}>
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
           <Card style={{ borderRadius: 8 }}>

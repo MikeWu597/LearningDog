@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NavBar, List, Button, Dialog, Input, Picker, Toast, Tag, Space, PullToRefresh } from 'antd-mobile';
+import { NavBar, List, Button, Input, Toast, Tag, Space, PullToRefresh, Popup } from 'antd-mobile';
 import { apiGetRooms, apiCreateRoom, apiJoinRoom } from '../utils/api';
 import { useApp } from '../App';
 
@@ -11,6 +11,7 @@ export default function RoomList() {
   const [loading, setLoading] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [maxUsers, setMaxUsers] = useState(4);
+  const [createVisible, setCreateVisible] = useState(false);
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -26,42 +27,26 @@ export default function RoomList() {
 
   useEffect(() => { fetchRooms(); }, []);
 
-  const handleCreate = async () => {
-    const result = await Dialog.confirm({
-      title: '创建自习室',
-      content: (
-        <div style={{ padding: '12px 0' }}>
-          <Input
-            placeholder="房间名称"
-            value={roomName}
-            onChange={setRoomName}
-            style={{ marginBottom: 12 }}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[2, 4, 9].map(n => (
-              <Button
-                key={n}
-                size="small"
-                color={maxUsers === n ? 'primary' : 'default'}
-                onClick={() => setMaxUsers(n)}
-              >
-                {n === 2 ? '二宫格' : n === 4 ? '四宫格' : '九宫格'}
-              </Button>
-            ))}
-          </div>
-        </div>
-      ),
-    });
+  const openCreatePopup = () => {
+    setRoomName('');
+    setMaxUsers(4);
+    setCreateVisible(true);
+  };
 
-    if (result && roomName.trim()) {
-      try {
-        await apiCreateRoom(roomName.trim(), maxUsers);
-        Toast.show({ content: '房间创建成功' });
-        setRoomName('');
-        fetchRooms();
-      } catch (err) {
-        Toast.show({ content: '创建失败' });
-      }
+  const handleCreate = async () => {
+    if (!roomName.trim()) {
+      Toast.show({ content: '请输入房间名称' });
+      return;
+    }
+
+    try {
+      await apiCreateRoom(roomName.trim(), maxUsers);
+      Toast.show({ content: '房间创建成功' });
+      setCreateVisible(false);
+      setRoomName('');
+      fetchRooms();
+    } catch (err) {
+      Toast.show({ content: '创建失败' });
     }
   };
 
@@ -75,7 +60,7 @@ export default function RoomList() {
   };
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
+    <div className="mobile-screen mobile-screen-light">
       <NavBar
         back={null}
         right={
@@ -90,10 +75,10 @@ export default function RoomList() {
 
       <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontWeight: 'bold' }}>👋 {user?.username}</span>
-        <Button size="small" color="primary" onClick={handleCreate}>+ 创建房间</Button>
+        <Button size="small" color="primary" onClick={openCreatePopup}>+ 创建房间</Button>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="mobile-main" style={{ overflow: 'auto' }}>
         <PullToRefresh onRefresh={fetchRooms}>
           {rooms.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 48, color: '#999' }}>
@@ -119,6 +104,38 @@ export default function RoomList() {
           )}
         </PullToRefresh>
       </div>
+
+      <Popup
+        visible={createVisible}
+        onMaskClick={() => setCreateVisible(false)}
+        bodyStyle={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 16 }}>
+          创建自习室
+        </div>
+        <Input
+          placeholder="房间名称"
+          value={roomName}
+          onChange={setRoomName}
+          style={{ marginBottom: 12 }}
+        />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[2, 4, 9].map(n => (
+            <Button
+              key={n}
+              block
+              color={maxUsers === n ? 'primary' : 'default'}
+              onClick={() => setMaxUsers(n)}
+            >
+              {n === 2 ? '二宫格' : n === 4 ? '四宫格' : '九宫格'}
+            </Button>
+          ))}
+        </div>
+        <Space block style={{ '--gap': '8px' }}>
+          <Button block onClick={() => setCreateVisible(false)}>取消</Button>
+          <Button block color="primary" onClick={handleCreate}>创建</Button>
+        </Space>
+      </Popup>
     </div>
   );
 }

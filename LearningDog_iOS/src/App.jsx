@@ -1,5 +1,5 @@
-import React, { useState, createContext, useContext } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './components/Login';
 import RoomList from './components/RoomList';
 import Room from './components/Room';
@@ -9,6 +9,7 @@ import ServerConfig from './components/ServerConfig';
 import { getUUID, getUsername } from './utils/uuid';
 import { isServerConfigured, clearServerUrl } from './utils/server';
 import { useSocket } from './hooks/useSocket';
+import { lockAppOrientation, getOrientationModeByPath } from './utils/orientation';
 
 export const AppContext = createContext(null);
 
@@ -17,7 +18,9 @@ export function useApp() {
 }
 
 export default function App() {
+  const location = useLocation();
   const [serverReady, setServerReady] = useState(isServerConfigured());
+  const lastOrientationRef = useRef(null);
   const [user, setUser] = useState(() => {
     const uuid = getUUID();
     const username = getUsername();
@@ -26,6 +29,13 @@ export default function App() {
   });
 
   const socketHook = useSocket();
+
+  useEffect(() => {
+    const targetOrientation = getOrientationModeByPath(location.pathname);
+    if (lastOrientationRef.current === targetOrientation) return;
+    lastOrientationRef.current = targetOrientation;
+    lockAppOrientation(targetOrientation);
+  }, [location.pathname]);
 
   const handleDisconnectServer = () => {
     clearServerUrl();
