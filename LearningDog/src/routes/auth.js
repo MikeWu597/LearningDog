@@ -3,6 +3,11 @@ const db = require('../db');
 
 const router = Router();
 
+// GET /api/auth/ping
+router.get('/ping', (req, res) => {
+  res.json({ ok: true, time: Date.now() });
+});
+
 // POST /api/auth/login
 router.post('/login', (req, res) => {
   try {

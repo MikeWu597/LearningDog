@@ -1,23 +1,35 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
-
-const SERVER_URL = 'http://localhost:3000';
+import { getServerUrl } from '../utils/server';
 
 export function useSocket() {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
-  useEffect(() => {
-    const socket = io(SERVER_URL, { transports: ['websocket', 'polling'] });
+  const connect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    const url = getServerUrl();
+    if (!url) return;
+    const socket = io(url, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
-
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
-
-    return () => {
-      socket.disconnect();
-    };
   }, []);
+
+  const disconnect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+      setConnected(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    connect();
+    return () => disconnect();
+  }, [connect, disconnect]);
 
   const emit = useCallback((event, data) => {
     socketRef.current?.emit(event, data);
@@ -32,5 +44,5 @@ export function useSocket() {
     socketRef.current?.off(event, handler);
   }, []);
 
-  return { socket: socketRef, connected, emit, on, off };
+  return { socket: socketRef, connected, emit, on, off, connect, disconnect };
 }
