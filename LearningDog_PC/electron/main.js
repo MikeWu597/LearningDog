@@ -1,4 +1,4 @@
-const { app, BrowserWindow, desktopCapturer, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, desktopCapturer, ipcMain } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -9,6 +9,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -17,11 +18,12 @@ function createWindow() {
     title: 'LearningDog',
   });
 
-  // In dev, load from Vite dev server; in prod, load built files
-  if (process.env.NODE_ENV !== 'production') {
-    mainWindow.loadURL('http://localhost:5173');
-  } else {
+  Menu.setApplicationMenu(null);
+
+  if (app.isPackaged) {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  } else {
+    mainWindow.loadURL('http://localhost:5173');
   }
 }
 
