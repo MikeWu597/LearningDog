@@ -35,6 +35,27 @@ export function useSocket() {
     socketRef.current?.emit(event, data);
   }, []);
 
+  const request = useCallback((event, data = {}) => new Promise((resolve, reject) => {
+    if (!socketRef.current) {
+      reject(new Error('Socket is not connected'));
+      return;
+    }
+
+    socketRef.current.emit(event, data, (response) => {
+      if (!response) {
+        reject(new Error(`${event} failed`));
+        return;
+      }
+
+      if (response.ok === false) {
+        reject(new Error(response.error || `${event} failed`));
+        return;
+      }
+
+      resolve(response);
+    });
+  }), []);
+
   const on = useCallback((event, handler) => {
     socketRef.current?.on(event, handler);
     return () => socketRef.current?.off(event, handler);
@@ -44,5 +65,5 @@ export function useSocket() {
     socketRef.current?.off(event, handler);
   }, []);
 
-  return { socket: socketRef, connected, emit, on, off, connect, disconnect };
+  return { socket: socketRef, connected, emit, on, off, request, connect, disconnect };
 }

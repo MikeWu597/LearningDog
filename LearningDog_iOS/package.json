@@ -10,16 +10,16 @@
     "cap:open": "npx cap open ios"
   },
   "dependencies": {
-    "antd-mobile": "^5.37.0",
     "@capacitor/camera": "^6.0.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/screen-orientation": "^6.0.0",
+    "antd-mobile": "^5.37.0",
     "dayjs": "^1.11.13",
     "html-to-image": "^1.11.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
-    "socket.io-client": "^4.8.0",
-    "@capacitor/core": "^6.1.0",
-    "@capacitor/screen-orientation": "^6.0.0"
+    "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",

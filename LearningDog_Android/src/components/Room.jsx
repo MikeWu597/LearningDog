@@ -11,7 +11,7 @@ import Widgets from './Widgets';
 export default function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, socket, emit, on } = useApp();
+  const { user, socket, emit, on, request } = useApp();
 
   const [localStream, setLocalStream] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
@@ -27,16 +27,19 @@ export default function Room() {
     socket,
     localStream,
     roomId,
-    uuid: user?.uuid,
-    username: user?.username,
+    sourceType: 'camera',
   });
 
   // Join room
   useEffect(() => {
     if (!socket.current || !user) return;
 
-    const joinRoom = () => {
-      emit('join-room', { roomId, uuid: user.uuid, username: user.username });
+    const joinRoom = async () => {
+      try {
+        await request('join-room', { roomId, uuid: user.uuid, username: user.username });
+      } catch (err) {
+        Toast.show({ content: err.message || '加入房间失败' });
+      }
     };
 
     if (socket.current.connected) {
@@ -48,7 +51,7 @@ export default function Room() {
     return () => {
       socket.current?.off('connect', joinRoom);
     };
-  }, [socket, roomId, user, emit]);
+  }, [socket, roomId, user, request]);
 
   // Widget updates
   useEffect(() => {

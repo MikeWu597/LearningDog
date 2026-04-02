@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const recordRoutes = require('./routes/records');
 const { setupSocket } = require('./socket/index');
+const { createMediaRelayServer } = require('./socket/mediaRelay');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,10 +26,19 @@ app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'LearningDog server is running' });
 });
 
-setupSocket(io);
-
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, HOST, () => {
-  console.log(`LearningDog server running on http://${HOST}:${PORT}`);
+
+async function start() {
+  const mediaRelay = await createMediaRelayServer(io);
+  setupSocket(io, mediaRelay);
+
+  server.listen(PORT, HOST, () => {
+    console.log(`LearningDog server running on http://${HOST}:${PORT}`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Failed to start LearningDog server', err);
+  process.exit(1);
 });

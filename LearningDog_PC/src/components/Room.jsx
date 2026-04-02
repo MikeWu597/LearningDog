@@ -19,12 +19,13 @@ const { Text } = Typography;
 export default function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, socket, emit, on } = useApp();
+  const { user, socket, emit, on, request } = useApp();
 
   const [localStream, setLocalStream] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [screenOn, setScreenOn] = useState(false);
   const [screenBlur, setScreenBlur] = useState(false);
+  const [localSourceType, setLocalSourceType] = useState(null);
   const [focusing, setFocusing] = useState(false);
   const [widgets, setWidgets] = useState({}); // { uuid: { type, data } }
   const [myEmoji, setMyEmoji] = useState('');
@@ -38,16 +39,19 @@ export default function Room() {
     socket,
     localStream,
     roomId,
-    uuid: user?.uuid,
-    username: user?.username,
+    sourceType: localSourceType || 'camera',
   });
 
   // Join room via socket on mount
   useEffect(() => {
     if (!socket.current || !user) return;
 
-    const joinRoom = () => {
-      emit('join-room', { roomId, uuid: user.uuid, username: user.username });
+    const joinRoom = async () => {
+      try {
+        await request('join-room', { roomId, uuid: user.uuid, username: user.username });
+      } catch (err) {
+        message.error(err.message || '加入房间失败');
+      }
     };
 
     if (socket.current.connected) {
@@ -59,7 +63,7 @@ export default function Room() {
     return () => {
       socket.current?.off('connect', joinRoom);
     };
-  }, [socket, roomId, user, emit]);
+  }, [socket, roomId, user, request]);
 
   // Listen for widget updates from other users
   useEffect(() => {
@@ -79,6 +83,7 @@ export default function Room() {
       const compressed = createCompressedStream(stream, 480, 12);
       cameraStreamRef.current = stream;
       setLocalStream(compressed);
+      setLocalSourceType('camera');
       setCameraOn(true);
       if (localVideoRef.current) localVideoRef.current.srcObject = compressed;
     } catch (err) {
@@ -91,7 +96,12 @@ export default function Room() {
     cameraStreamRef.current?.getTracks().forEach(t => t.stop());
     cameraStreamRef.current = null;
     setCameraOn(false);
-    if (!screenOn) setLocalStream(null);
+    if (screenOn && screenStreamRef.current) {
+      setLocalSourceType('screen');
+    } else {
+      setLocalSourceType(null);
+      setLocalStream(null);
+    }
   };
 
   // Start screen sharing (Electron only)
@@ -122,6 +132,7 @@ export default function Room() {
       const processed = screenBlur ? createBlurredStream(stream, 8) : createCompressedStream(stream, 1280, 10);
       screenStreamRef.current = stream;
       setLocalStream(processed);
+      setLocalSourceType('screen');
       setScreenOn(true);
       if (localVideoRef.current) localVideoRef.current.srcObject = processed;
 
@@ -141,8 +152,10 @@ export default function Room() {
     setScreenOn(false);
     if (cameraOn && cameraStreamRef.current) {
       const compressed = createCompressedStream(cameraStreamRef.current, 480, 12);
+      setLocalSourceType('camera');
       setLocalStream(compressed);
     } else {
+      setLocalSourceType(null);
       setLocalStream(null);
     }
   };

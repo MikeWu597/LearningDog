@@ -10,6 +10,7 @@ function formatTime(seconds) {
 
 export default function VideoCell({
   stream,
+  frameUrl,
   videoRef: externalVideoRef,
   username,
   isLocal,
@@ -69,6 +70,12 @@ export default function VideoCell({
           autoPlay
           playsInline
           muted={isLocal}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : frameUrl ? (
+        <img
+          src={frameUrl}
+          alt={username}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       ) : (

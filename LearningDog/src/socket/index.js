@@ -1,13 +1,22 @@
 const db = require('../db');
-const { setupSignaling } = require('./signaling');
 const { setupWidgets } = require('./widgets');
 
-function setupSocket(io) {
+function setupSocket(io, mediaRelay) {
   io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    socket.on('join-room', ({ roomId, uuid, username }) => {
-      if (!roomId || !uuid || !username) return;
+    socket.on('join-room', async ({ roomId, uuid, username }, callback = () => {}) => {
+      if (!roomId || !uuid || !username) {
+        callback({ ok: false, error: 'roomId, uuid and username are required' });
+        return;
+      }
+
+      try {
+        await mediaRelay.getOrCreateRoom(roomId);
+      } catch (err) {
+        callback({ ok: false, error: err.message });
+        return;
+      }
 
       // Store user info on socket
       socket.data.roomId = roomId;
@@ -40,28 +49,32 @@ function setupSocket(io) {
         }
       }
       socket.emit('room-users', users);
+      callback({ ok: true, users });
     });
 
     socket.on('leave-room', () => {
-      handleLeaveRoom(socket, io);
+      handleLeaveRoom(socket, io, mediaRelay);
     });
 
-    setupSignaling(socket);
+    mediaRelay.registerSocket(socket);
     setupWidgets(socket);
 
     socket.on('disconnect', () => {
       console.log(`Socket disconnected: ${socket.id}`);
-      handleLeaveRoom(socket, io);
+      handleLeaveRoom(socket, io, mediaRelay);
     });
   });
 }
 
-function handleLeaveRoom(socket, io) {
+function handleLeaveRoom(socket, io, mediaRelay) {
   const { roomId, uuid, username } = socket.data;
   if (!roomId) return;
 
   const socketRoom = `room:${roomId}`;
+
+  mediaRelay.cleanupPeer(socket);
   socket.leave(socketRoom);
+  mediaRelay.cleanupEmptyRoom(roomId);
 
   // Broadcast to others
   socket.to(socketRoom).emit('user-left', {

@@ -29,12 +29,13 @@ export default function VideoGrid({
     />
   );
 
-  Object.entries(remoteStreams).forEach(([socketId, { stream, uuid, username }]) => {
+  Object.entries(remoteStreams).forEach(([socketId, { stream, frameUrl, uuid, username }]) => {
     const widget = widgets[uuid];
     cells.push(
       <VideoCell
         key={socketId}
         stream={stream}
+        frameUrl={frameUrl}
         username={username || '用户'}
         emoji={widget?.type === 'emoji' ? widget.data?.emoji : ''}
         timer={widget?.type === 'clock' ? widget.data : null}
