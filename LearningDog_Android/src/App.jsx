@@ -10,6 +10,7 @@ import { getUUID, getUsername } from './utils/uuid';
 import { isServerConfigured, clearServerUrl } from './utils/server';
 import { useSocket } from './hooks/useSocket';
 import { lockAppOrientation, getOrientationModeByPath } from './utils/orientation';
+import { ensureCameraPermission, ensurePhotoPermission } from './utils/permissions';
 
 export const AppContext = createContext(null);
 
@@ -29,6 +30,12 @@ export default function App() {
   });
 
   const socketHook = useSocket();
+
+  // Request all permissions at app startup
+  useEffect(() => {
+    ensureCameraPermission().catch(() => {});
+    ensurePhotoPermission().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const targetOrientation = getOrientationModeByPath(location.pathname);
