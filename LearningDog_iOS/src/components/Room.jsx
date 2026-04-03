@@ -77,7 +77,7 @@ export default function Room() {
   // Widget updates
   useEffect(() => {
     const cleanupUpdate = on('widget-update', ({ uuid, type, data }) => {
-      setWidgets(prev => ({ ...prev, [uuid]: { type, data } }));
+      setWidgets(prev => ({ ...prev, [uuid]: { ...prev[uuid], [type]: data } }));
     });
     const cleanupStates = on('widget-states', (states) => {
       setWidgets(prev => ({ ...prev, ...states }));

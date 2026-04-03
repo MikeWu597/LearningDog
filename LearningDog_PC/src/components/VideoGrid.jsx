@@ -39,8 +39,8 @@ export default function VideoGrid({
         stream={stream}
         frameUrl={frameUrl}
         username={username || '用户'}
-        emoji={widget?.type === 'emoji' ? widget.data?.emoji : ''}
-        timer={widget?.type === 'clock' ? widget.data : null}
+        emoji={widget?.emoji?.emoji || ''}
+        timer={widget?.clock || null}
         networkStatus="good"
       />
     );

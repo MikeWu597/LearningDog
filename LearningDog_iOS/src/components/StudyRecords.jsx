@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NavBar, Card, List, Tag, Toast, Button } from 'antd-mobile';
+import { NavBar, Card, List, Tag, Toast, Button, Popup } from 'antd-mobile';
+import { DownlandOutline } from 'antd-mobile-icons';
 import { toPng } from 'html-to-image';
 import dayjs from 'dayjs';
 import { apiGetDailyRecords, apiGetStats, apiGetRecords } from '../utils/api';
@@ -64,6 +65,8 @@ export default function StudyRecords() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const posterRef = useRef(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   useEffect(() => {
     if (!user?.uuid) return;
@@ -81,15 +84,26 @@ export default function StudyRecords() {
     }).finally(() => setLoading(false));
   }, [user?.uuid]);
 
-  const exportPoster = async () => {
+  const showPosterPreview = async () => {
     if (!posterRef.current) return;
     try {
       const dataUrl = await toPng(posterRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
-      const fileName = `LearningDog_${user.username}_${dayjs().format('YYYY-MM-DD')}.png`;
-      const result = await savePosterImage(dataUrl, fileName);
-      Toast.show({ content: result === 'photo-library' ? '海报已保存到系统相册' : '海报已下载' });
+      setPreviewUrl(dataUrl);
+      setPreviewVisible(true);
     } catch (err) {
-      Toast.show({ content: err?.message || '导出失败' });
+      Toast.show({ content: err?.message || '生成海报失败' });
+    }
+  };
+
+  const savePoster = async () => {
+    if (!previewUrl) return;
+    try {
+      const fileName = `LearningDog_${user.username}_${dayjs().format('YYYY-MM-DD')}.png`;
+      const result = await savePosterImage(previewUrl, fileName);
+      Toast.show({ content: result === 'photo-library' ? '海报已保存到系统相册' : '海报已下载' });
+      setPreviewVisible(false);
+    } catch (err) {
+      Toast.show({ content: err?.message || '保存失败' });
     }
   };
 
@@ -98,7 +112,7 @@ export default function StudyRecords() {
   return (
     <div className="mobile-screen mobile-screen-light">
       <NavBar onBack={() => navigate('/rooms')} right={
-        <Button size="mini" onClick={exportPoster}>导出海报</Button>
+        <Button size="mini" onClick={showPosterPreview}>导出海报</Button>
       }>
         学习记录
       </NavBar>
@@ -148,6 +162,30 @@ export default function StudyRecords() {
           </List>
         </Card>
       </div>
+
+      {/* Poster preview popup */}
+      <Popup
+        visible={previewVisible}
+        onMaskClick={() => setPreviewVisible(false)}
+        bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 16, maxHeight: '80vh', overflow: 'auto' }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 12 }}>海报预览</div>
+          {previewUrl && (
+            <img src={previewUrl} alt="poster" style={{ width: '100%', maxWidth: 320, borderRadius: 8 }} />
+          )}
+          <div style={{ marginTop: 16 }}>
+            <Button
+              block
+              color="primary"
+              onClick={savePoster}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <DownlandOutline /> 保存海报
+            </Button>
+          </div>
+        </div>
+      </Popup>
 
       {/* Hidden poster */}
       <div style={{ position: 'absolute', left: -9999 }}>
