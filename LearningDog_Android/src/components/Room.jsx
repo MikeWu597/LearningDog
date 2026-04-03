@@ -5,6 +5,7 @@ import { useApp } from '../App';
 import { apiLeaveRoom, apiStartFocus, apiStopFocus } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createCompressedStream, createBlurredStream } from '../utils/mediaProcessing';
+import { ensureCameraPermission } from '../utils/permissions';
 import VideoGrid from './VideoGrid';
 import Widgets from './Widgets';
 
@@ -67,6 +68,7 @@ export default function Room() {
 
   const openCamera = async (facing, blur) => {
     try {
+      await ensureCameraPermission();
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 480, height: 360, frameRate: 12, facingMode: facing },
         audio: false,
