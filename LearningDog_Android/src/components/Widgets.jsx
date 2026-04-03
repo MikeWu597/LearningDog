@@ -61,10 +61,10 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
         background: '#16213e',
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
       }}>
-        <Button size="small" onClick={() => setEmojiOpen(true)} style={{ color: '#fff' }}>
+        <Button size="small" onClick={() => setEmojiOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
           {emoji || '😊'} Emoji
         </Button>
-        <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#fff' }}>
+        <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
           ⏱️ {timer?.running ? formatTime(localSeconds) : '计时器'}
         </Button>
       </div>

@@ -15,7 +15,7 @@ router.post('/start', (req, res) => {
     const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
     if (active) {
       const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-      const startMs = new Date(active.start_time).getTime();
+      const startMs = new Date(active.start_time + 'Z').getTime();
       const duration = Math.floor((Date.now() - startMs) / 1000);
       db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
         .run(now, duration, active.id);
@@ -45,7 +45,7 @@ router.post('/stop', (req, res) => {
     }
 
     const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    const startMs = new Date(active.start_time).getTime();
+    const startMs = new Date(active.start_time + 'Z').getTime();
     const duration = Math.floor((Date.now() - startMs) / 1000);
 
     db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')

@@ -107,12 +107,12 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
   return (
     <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8 }}>
       <Popover content={emojiContent} title="选择 Emoji" trigger="click" placement="top">
-        <Button icon={<SmileOutlined />} style={{ color: '#fff' }}>
+        <Button icon={<SmileOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
           {emoji || 'Emoji'}
         </Button>
       </Popover>
       <Popover content={timerContent} title="计时器" trigger="click" placement="top">
-        <Button icon={<ClockCircleOutlined />} style={{ color: '#fff' }}>
+        <Button icon={<ClockCircleOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
           {timer?.running ? formatTime(localSeconds) : '计时器'}
         </Button>
       </Popover>

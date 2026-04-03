@@ -262,8 +262,8 @@ export default function Room() {
           </Tooltip>
         </Space>
       </Header>
-      <Content style={{ padding: 8, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1 }}>
+      <Content style={{ padding: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minHeight: 0 }}>
           <VideoGrid
             gridSize={gridSize}
             localVideoRef={localVideoRef}
