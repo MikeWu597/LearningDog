@@ -4,7 +4,7 @@ import { NavBar, Button, Toast, Space } from 'antd-mobile';
 import { useApp } from '../App';
 import { apiLeaveRoom, apiStartFocus, apiStopFocus } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
-import { createCompressedStream } from '../utils/mediaProcessing';
+import { createCompressedStream, createBlurredStream } from '../utils/mediaProcessing';
 import VideoGrid from './VideoGrid';
 import Widgets from './Widgets';
 
@@ -15,6 +15,8 @@ export default function Room() {
 
   const [localStream, setLocalStream] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
+  const [facingMode, setFacingMode] = useState('user');
+  const [blurOn, setBlurOn] = useState(false);
   const [focusing, setFocusing] = useState(false);
   const [widgets, setWidgets] = useState({});
   const [myEmoji, setMyEmoji] = useState('');
@@ -22,6 +24,8 @@ export default function Room() {
 
   const localVideoRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  const facingModeRef = useRef('user');
+  const blurOnRef = useRef(false);
 
   const { remoteStreams, closeAll } = useWebRTC({
     socket,
@@ -61,20 +65,26 @@ export default function Room() {
     return cleanup;
   }, [on]);
 
-  const startCamera = async () => {
+  const openCamera = async (facing, blur) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 480, height: 360, frameRate: 12, facingMode: 'user' },
+        video: { width: 480, height: 360, frameRate: 12, facingMode: facing },
         audio: false,
       });
-      const compressed = createCompressedStream(stream, 360, 10);
+      const processed = blur
+        ? createBlurredStream(stream, 8, 360, 10)
+        : createCompressedStream(stream, 360, 10);
       cameraStreamRef.current = stream;
-      setLocalStream(compressed);
+      setLocalStream(processed);
       setCameraOn(true);
-      if (localVideoRef.current) localVideoRef.current.srcObject = compressed;
+      if (localVideoRef.current) localVideoRef.current.srcObject = processed;
     } catch (err) {
       Toast.show({ content: '无法访问摄像头' });
     }
+  };
+
+  const startCamera = async () => {
+    await openCamera(facingModeRef.current, blurOnRef.current);
   };
 
   const stopCamera = () => {
@@ -82,6 +92,27 @@ export default function Room() {
     cameraStreamRef.current = null;
     setCameraOn(false);
     setLocalStream(null);
+  };
+
+  const flipCamera = async () => {
+    if (!cameraOn) return;
+    const newFacing = facingModeRef.current === 'user' ? 'environment' : 'user';
+    facingModeRef.current = newFacing;
+    setFacingMode(newFacing);
+    cameraStreamRef.current?.getTracks().forEach(t => t.stop());
+    await openCamera(newFacing, blurOnRef.current);
+  };
+
+  const toggleBlur = async () => {
+    const newBlur = !blurOnRef.current;
+    blurOnRef.current = newBlur;
+    setBlurOn(newBlur);
+    if (!cameraOn || !cameraStreamRef.current) return;
+    const processed = newBlur
+      ? createBlurredStream(cameraStreamRef.current, 8, 360, 10)
+      : createCompressedStream(cameraStreamRef.current, 360, 10);
+    setLocalStream(processed);
+    if (localVideoRef.current) localVideoRef.current.srcObject = processed;
   };
 
   const toggleFocus = async () => {
@@ -137,6 +168,20 @@ export default function Room() {
             >
               📷
             </Button>
+            {cameraOn && (
+              <Button size="mini" onClick={flipCamera}>
+                🔄
+              </Button>
+            )}
+            {cameraOn && (
+              <Button
+                size="mini"
+                color={blurOn ? 'primary' : 'default'}
+                onClick={toggleBlur}
+              >
+                {blurOn ? '🔓' : '🔒'}
+              </Button>
+            )}
             <Button
               size="mini"
               color={focusing ? 'danger' : 'default'}

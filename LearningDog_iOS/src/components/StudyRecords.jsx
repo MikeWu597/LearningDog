@@ -5,6 +5,7 @@ import { toPng } from 'html-to-image';
 import dayjs from 'dayjs';
 import { apiGetDailyRecords, apiGetStats, apiGetRecords } from '../utils/api';
 import { useApp } from '../App';
+import { savePosterImage } from '../utils/photoLibrary';
 
 function formatDuration(seconds) {
   if (!seconds) return '0分钟';
@@ -84,13 +85,11 @@ export default function StudyRecords() {
     if (!posterRef.current) return;
     try {
       const dataUrl = await toPng(posterRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
-      const link = document.createElement('a');
-      link.download = `LearningDog_${user.username}_${dayjs().format('YYYY-MM-DD')}.png`;
-      link.href = dataUrl;
-      link.click();
-      Toast.show({ content: '海报已保存' });
+      const fileName = `LearningDog_${user.username}_${dayjs().format('YYYY-MM-DD')}.png`;
+      const result = await savePosterImage(dataUrl, fileName);
+      Toast.show({ content: result === 'photo-library' ? '海报已保存到系统相册' : '海报已下载' });
     } catch (err) {
-      Toast.show({ content: '导出失败' });
+      Toast.show({ content: err?.message || '导出失败' });
     }
   };
 

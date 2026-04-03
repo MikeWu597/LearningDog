@@ -20,9 +20,12 @@ function frameToBlob(frame, mimeType) {
   return new Blob([frame], { type: mimeType });
 }
 
+const STALE_TIMEOUT_MS = 2000;
+
 export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }) {
   const publisherRef = useRef(null);
   const frameUrlsRef = useRef(new Map());
+  const lastFrameTimeRef = useRef(new Map());
   const sourceTypeRef = useRef(sourceType);
   const [remoteStreams, setRemoteStreams] = useState({});
 
@@ -36,6 +39,8 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }
       URL.revokeObjectURL(existingUrl);
       frameUrlsRef.current.delete(socketId);
     }
+
+    lastFrameTimeRef.current.delete(socketId);
 
     setRemoteStreams(prev => {
       if (!prev[socketId]) return prev;
@@ -129,6 +134,7 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }
     const s = socket.current;
 
     const handleFrame = ({ socketId, uuid, username, sourceType: remoteSourceType, mimeType, frame }) => {
+      lastFrameTimeRef.current.set(socketId, Date.now());
       const frameUrl = URL.createObjectURL(frameToBlob(frame, mimeType || FRAME_MIME_TYPE));
       const existingUrl = frameUrlsRef.current.get(socketId);
       if (existingUrl) {
@@ -170,7 +176,17 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }
     s.on('media:stream-stopped', handleStreamStopped);
     s.on('connect', handleReconnect);
 
+    const sweepId = setInterval(() => {
+      const now = Date.now();
+      for (const [sid, ts] of lastFrameTimeRef.current.entries()) {
+        if (now - ts > STALE_TIMEOUT_MS) {
+          removeRemote(sid);
+        }
+      }
+    }, 1000);
+
     return () => {
+      clearInterval(sweepId);
       s.off('media:frame', handleFrame);
       s.off('user-left', handleUserLeft);
       s.off('media:stream-stopped', handleStreamStopped);
