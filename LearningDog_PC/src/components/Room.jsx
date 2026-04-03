@@ -40,6 +40,8 @@ export default function Room() {
     localStream,
     roomId,
     sourceType: localSourceType || 'camera',
+    uuid: user?.uuid,
+    username: user?.username,
   });
 
   // Join room via socket on mount
@@ -67,10 +69,13 @@ export default function Room() {
 
   // Listen for widget updates from other users
   useEffect(() => {
-    const cleanup = on('widget-update', ({ uuid, type, data }) => {
+    const cleanupUpdate = on('widget-update', ({ uuid, type, data }) => {
       setWidgets(prev => ({ ...prev, [uuid]: { type, data } }));
     });
-    return cleanup;
+    const cleanupStates = on('widget-states', (states) => {
+      setWidgets(prev => ({ ...prev, ...states }));
+    });
+    return () => { cleanupUpdate(); cleanupStates(); };
   }, [on]);
 
   // Start camera

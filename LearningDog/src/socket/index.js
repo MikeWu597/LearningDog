@@ -1,5 +1,5 @@
 const db = require('../db');
-const { setupWidgets } = require('./widgets');
+const { setupWidgets, getWidgetStates, removeUserWidgets, cleanupRoomWidgets } = require('./widgets');
 
 function setupSocket(io, mediaRelay) {
   io.on('connection', (socket) => {
@@ -49,6 +49,13 @@ function setupSocket(io, mediaRelay) {
         }
       }
       socket.emit('room-users', users);
+
+      // Send current widget states to the joining user
+      const widgetStates = getWidgetStates(roomId);
+      if (Object.keys(widgetStates).length > 0) {
+        socket.emit('widget-states', widgetStates);
+      }
+
       callback({ ok: true, users });
     });
 
@@ -75,6 +82,15 @@ function handleLeaveRoom(socket, io, mediaRelay) {
   mediaRelay.cleanupPeer(socket);
   socket.leave(socketRoom);
   mediaRelay.cleanupEmptyRoom(roomId);
+
+  // Clean up widget state
+  if (uuid) {
+    removeUserWidgets(roomId, uuid);
+  }
+  const memberCount = io.sockets.adapter.rooms.get(socketRoom)?.size || 0;
+  if (memberCount === 0) {
+    cleanupRoomWidgets(roomId);
+  }
 
   // Broadcast to others
   socket.to(socketRoom).emit('user-left', {

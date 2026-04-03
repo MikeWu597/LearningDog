@@ -118,11 +118,16 @@ class MediaRelayServer {
       }
     });
 
-    socket.on('media:frame', ({ roomId, frame, mimeType, sourceType, width, height, sentAt } = {}, callback = noop) => {
+    socket.on('media:frame', ({ roomId, frame, mimeType, sourceType, width, height, sentAt, uuid, username } = {}, callback = noop) => {
       try {
         if (!frame) {
           throw new Error('Frame is required');
         }
+
+        // Update socket.data if provided (covers reconnect race condition)
+        if (uuid && !socket.data.uuid) socket.data.uuid = uuid;
+        if (username && !socket.data.username) socket.data.username = username;
+        if (roomId && !socket.data.roomId) socket.data.roomId = roomId;
 
         const room = this.getRoomForSocket(socket, roomId);
         const publisher = this.upsertPublisher(room, socket, sourceType || 'camera');

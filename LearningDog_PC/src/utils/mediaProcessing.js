@@ -20,9 +20,8 @@ export function createBlurredStream(stream, blurRadius = 10) {
       ctx.filter = `blur(${blurRadius}px)`;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
-    requestAnimationFrame(drawFrame);
   }
-  drawFrame();
+  setInterval(drawFrame, 1000 / 15);
 
   return canvas.captureStream(15); // 15 fps
 }
@@ -53,9 +52,8 @@ export function createCompressedStream(stream, maxWidth = 640, fps = 15) {
     if (video.readyState >= 2) {
       ctx.drawImage(video, 0, 0, width, height);
     }
-    requestAnimationFrame(drawFrame);
   }
-  drawFrame();
+  setInterval(drawFrame, 1000 / fps);
 
   const compressedStream = canvas.captureStream(fps);
 

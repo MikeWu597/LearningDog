@@ -7,6 +7,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { createCompressedStream, createBlurredStream } from '../utils/mediaProcessing';
 import { ensureNativeCameraPermission } from '../utils/photoLibrary';
 import { lockAppOrientation } from '../utils/orientation';
+import { getKeepAwake, requestKeepAwake, releaseKeepAwake } from '../utils/keepAwake';
 import VideoGrid from './VideoGrid';
 import Widgets from './Widgets';
 
@@ -18,7 +19,7 @@ export default function Room() {
   const [localStream, setLocalStream] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [facingMode, setFacingMode] = useState('user');
-  const [blurOn, setBlurOn] = useState(false);
+  const [blurOn, setBlurOn] = useState(true);
   const [focusing, setFocusing] = useState(false);
   const [widgets, setWidgets] = useState({});
   const [myEmoji, setMyEmoji] = useState('');
@@ -27,19 +28,27 @@ export default function Room() {
   const localVideoRef = useRef(null);
   const cameraStreamRef = useRef(null);
   const facingModeRef = useRef('user');
-  const blurOnRef = useRef(false);
+  const blurOnRef = useRef(true);
 
   const { remoteStreams, closeAll } = useWebRTC({
     socket,
     localStream,
     roomId,
     sourceType: 'camera',
+    uuid: user?.uuid,
+    username: user?.username,
   });
 
   // Lock landscape on mount, restore portrait on unmount
   useEffect(() => {
     lockAppOrientation('landscape');
     return () => { lockAppOrientation('portrait'); };
+  }, []);
+
+  // Keep screen awake if enabled
+  useEffect(() => {
+    if (getKeepAwake()) requestKeepAwake();
+    return () => releaseKeepAwake();
   }, []);
 
   // Join room
@@ -67,10 +76,13 @@ export default function Room() {
 
   // Widget updates
   useEffect(() => {
-    const cleanup = on('widget-update', ({ uuid, type, data }) => {
+    const cleanupUpdate = on('widget-update', ({ uuid, type, data }) => {
       setWidgets(prev => ({ ...prev, [uuid]: { type, data } }));
     });
-    return cleanup;
+    const cleanupStates = on('widget-states', (states) => {
+      setWidgets(prev => ({ ...prev, ...states }));
+    });
+    return () => { cleanupUpdate(); cleanupStates(); };
   }, [on]);
 
   const openCamera = async (facing, blur) => {

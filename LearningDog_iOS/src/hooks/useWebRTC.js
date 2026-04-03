@@ -22,7 +22,7 @@ function frameToBlob(frame, mimeType) {
 
 const STALE_TIMEOUT_MS = 2000;
 
-export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }) {
+export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera', uuid, username }) {
   const publisherRef = useRef(null);
   const frameUrlsRef = useRef(new Map());
   const lastFrameTimeRef = useRef(new Map());
@@ -111,6 +111,8 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera' }
             width: canvas.width,
             height: canvas.height,
             sentAt: Date.now(),
+            uuid,
+            username,
           });
         } finally {
           busy = false;

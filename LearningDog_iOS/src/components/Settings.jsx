@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { NavBar, List, Input, Button, Toast } from 'antd-mobile';
+import { NavBar, List, Input, Button, Toast, Switch } from 'antd-mobile';
 import { getUUID, setUUID, getUsername, setUsername } from '../utils/uuid';
 import { apiLogin } from '../utils/api';
 import { useApp } from '../App';
+import { getKeepAwake, setKeepAwake } from '../utils/keepAwake';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function Settings() {
   const [uuid, setUuidInput] = useState(getUUID() || '');
   const [username, setUsernameInput] = useState(getUsername() || '');
   const [loading, setLoading] = useState(false);
+  const [keepAwake, setKeepAwakeState] = useState(getKeepAwake());
 
   const handleSave = async () => {
     if (!username.trim()) {
@@ -54,6 +56,14 @@ export default function Settings() {
           <List.Item title="用户名">
             <Input value={username} onChange={setUsernameInput} style={{ marginTop: 8 }} />
           </List.Item>
+        </List>
+
+        <List header="自习室设置" style={{ marginTop: 16 }}>
+          <List.Item
+            title="自习室内保持亮屏"
+            description="进入自习室后防止屏幕自动熄灭"
+            extra={<Switch checked={keepAwake} onChange={(v) => { setKeepAwakeState(v); setKeepAwake(v); }} />}
+          />
         </List>
 
         <Button
