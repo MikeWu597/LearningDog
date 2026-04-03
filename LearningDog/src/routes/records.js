@@ -11,6 +11,12 @@ router.post('/start', (req, res) => {
       return res.status(400).json({ error: 'uuid is required' });
     }
 
+    // Ensure user exists (may not have called /auth/login on a fresh server)
+    const userExists = db.prepare('SELECT 1 FROM users WHERE uuid = ?').get(uuid);
+    if (!userExists) {
+      db.prepare('INSERT INTO users (uuid, username) VALUES (?, ?)').run(uuid, uuid);
+    }
+
     // Stop any existing active session first
     const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
     if (active) {
