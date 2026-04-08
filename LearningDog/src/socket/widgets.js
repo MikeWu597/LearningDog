@@ -53,6 +53,12 @@ function getWidgetStates(roomId) {
   return result;
 }
 
+function getUserWidgetState(roomId, uuid) {
+  const roomWidgets = widgetStates.get(roomId);
+  if (!roomWidgets) return null;
+  return roomWidgets.get(uuid) || null;
+}
+
 function removeUserWidgets(roomId, uuid) {
   const roomWidgets = widgetStates.get(roomId);
   if (roomWidgets) {
@@ -67,4 +73,4 @@ function cleanupRoomWidgets(roomId) {
   widgetStates.delete(roomId);
 }
 
-module.exports = { setupWidgets, getWidgetStates, removeUserWidgets, cleanupRoomWidgets };
+module.exports = { setupWidgets, getWidgetStates, getUserWidgetState, removeUserWidgets, cleanupRoomWidgets, resolveClockState };

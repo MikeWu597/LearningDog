@@ -20,15 +20,16 @@ router.post('/start', (req, res) => {
     // Stop any existing active session first
     const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
     if (active) {
-      const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-      const startMs = new Date(active.start_time + 'Z').getTime();
+      const now = db.beijingNow();
+      const startMs = db.beijingToMs(active.start_time);
       const duration = Math.floor((Date.now() - startMs) / 1000);
       db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
         .run(now, duration, active.id);
     }
 
-    const result = db.prepare('INSERT INTO focus_records (user_uuid, room_id) VALUES (?, ?)')
-      .run(uuid, roomId || null);
+    const now = db.beijingNow();
+    const result = db.prepare('INSERT INTO focus_records (user_uuid, room_id, start_time) VALUES (?, ?, ?)')
+      .run(uuid, roomId || null, now);
 
     const record = db.prepare('SELECT * FROM focus_records WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(record);
@@ -50,8 +51,8 @@ router.post('/stop', (req, res) => {
       return res.status(404).json({ error: 'No active focus session' });
     }
 
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-    const startMs = new Date(active.start_time + 'Z').getTime();
+    const now = db.beijingNow();
+    const startMs = db.beijingToMs(active.start_time);
     const duration = Math.floor((Date.now() - startMs) / 1000);
 
     db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
@@ -67,7 +68,7 @@ router.post('/stop', (req, res) => {
 // GET /api/records/:uuid
 router.get('/:uuid', (req, res) => {
   try {
-    const records = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? ORDER BY start_time DESC')
+    const records = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NOT NULL ORDER BY start_time DESC')
       .all(req.params.uuid);
     res.json(records);
   } catch (err) {

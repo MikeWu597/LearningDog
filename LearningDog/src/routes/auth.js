@@ -19,7 +19,7 @@ router.post('/login', (req, res) => {
     const existing = db.prepare('SELECT * FROM users WHERE uuid = ?').get(uuid);
 
     if (existing) {
-      db.prepare('UPDATE users SET username = ?, updated_at = datetime(\'now\') WHERE uuid = ?')
+      db.prepare('UPDATE users SET username = ?, updated_at = datetime(\'now\', \'+8 hours\') WHERE uuid = ?')
         .run(username, uuid);
     } else {
       db.prepare('INSERT INTO users (uuid, username) VALUES (?, ?)').run(uuid, username);
