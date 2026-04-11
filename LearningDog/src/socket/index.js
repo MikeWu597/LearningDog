@@ -1,7 +1,7 @@
 const db = require('../db');
 const { setupWidgets, getWidgetStates, getUserWidgetState, removeUserWidgets, cleanupRoomWidgets, resolveClockState } = require('./widgets');
 
-const RECONNECT_TIMEOUT = 30 * 1000; // 30 seconds
+const RECONNECT_TIMEOUT = 12 * 60 * 60 * 1000; // 12 hours
 // uuid -> { timer, roomId, username, socketId }
 const disconnectedUsers = new Map();
 
