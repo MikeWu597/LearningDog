@@ -205,7 +205,8 @@ class MediaRelayServer {
           sentAt: sentAt || Date.now(),
         });
 
-        // Face detection for camera streams (sampled)
+        // Face detection for camera streams (sampled) — temporarily disabled
+        /*
         if ((sourceType || 'camera') === 'camera' && frame) {
           const now = Date.now();
           const state = this.faceCheckState.get(socket.id) || { lastCheckTime: 0, cooldownUntil: 0 };
@@ -225,6 +226,7 @@ class MediaRelayServer {
             }).catch(() => {});
           }
         }
+        */
 
         callback({ ok: true });
       } catch (err) {
