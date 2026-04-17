@@ -8,7 +8,7 @@ import {
   BarChartOutlined,
 } from '@ant-design/icons';
 import { useApp } from '../App';
-import { apiLeaveRoom } from '../utils/api';
+import { apiLeaveRoom, apiGetFiles, getFileDownloadUrl } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createBlurredStream, createCompressedStream } from '../utils/mediaProcessing';
 import VideoGrid from './VideoGrid';
@@ -32,6 +32,12 @@ export default function Room() {
   const [myEmoji, setMyEmoji] = useState('');
   const [myTimer, setMyTimer] = useState({ mode: 'up', running: false, seconds: 0 });
   const [roomUsers, setRoomUsers] = useState([]);
+  const [myFiles, setMyFiles] = useState([]);
+  const [sharedFiles, setSharedFiles] = useState({}); // { uuid: { fileId, originalName, mimeType } }
+  const [mySharedFileId, setMySharedFileId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageAcks, setMessageAcks] = useState({}); // { messageId: [{ userUuid, username, ackedAt }] }
+  const [incomingMsg, setIncomingMsg] = useState(null); // for popup
 
   const localVideoRef = useRef(null);
   const screenStreamRef = useRef(null);
@@ -115,6 +121,54 @@ export default function Room() {
     });
     return () => { cleanupUpdate(); cleanupStates(); };
   }, [on]);
+
+  // Load user files on mount
+  useEffect(() => {
+    if (user?.uuid) {
+      apiGetFiles(user.uuid).then(setMyFiles).catch(() => {});
+    }
+  }, [user?.uuid]);
+
+  // Listen for file share events
+  useEffect(() => {
+    const cleanupShare = on('file-share', ({ uuid, fileId, originalName, mimeType }) => {
+      setSharedFiles(prev => ({ ...prev, [uuid]: { fileId, originalName, mimeType } }));
+    });
+    const cleanupUnshare = on('file-unshare', ({ uuid }) => {
+      setSharedFiles(prev => {
+        const next = { ...prev };
+        delete next[uuid];
+        return next;
+      });
+    });
+    const cleanupFilesState = on('shared-files-state', (state) => {
+      setSharedFiles(prev => ({ ...prev, ...state }));
+    });
+    return () => { cleanupShare(); cleanupUnshare(); cleanupFilesState(); };
+  }, [on]);
+
+  // Listen for messages
+  useEffect(() => {
+    const cleanupMsg = on('room-message', (msg) => {
+      setMessages(prev => [...prev, msg]);
+      // Show popup if message is from someone else
+      if (msg.senderUuid !== user?.uuid) {
+        setIncomingMsg(msg);
+      }
+    });
+    const cleanupAck = on('message-ack', ({ messageId, userUuid, username, ackedAt }) => {
+      setMessageAcks(prev => {
+        const existing = prev[messageId] || [];
+        if (existing.find(a => a.userUuid === userUuid)) return prev;
+        return { ...prev, [messageId]: [...existing, { userUuid, username, ackedAt }] };
+      });
+    });
+    const cleanupHistory = on('room-messages-history', ({ messages: msgs, acks }) => {
+      setMessages(msgs);
+      setMessageAcks(acks || {});
+    });
+    return () => { cleanupMsg(); cleanupAck(); cleanupHistory(); };
+  }, [on, user?.uuid]);
 
   // Start camera
   const startCamera = async () => {
@@ -232,6 +286,26 @@ export default function Room() {
     }
   };
 
+  // File sharing
+  const handleShareFile = (fileId, originalName, mimeType) => {
+    setMySharedFileId(fileId);
+    emit('file-share', { roomId, fileId, originalName, mimeType });
+  };
+
+  const handleUnshareFile = () => {
+    setMySharedFileId(null);
+    emit('file-unshare', { roomId });
+  };
+
+  // Messaging
+  const handleSendMessage = (content) => {
+    emit('room-message', { roomId, content });
+  };
+
+  const handleAckMessage = (messageId) => {
+    emit('message-ack', { messageId, roomId });
+  };
+
   // Leave room
   const handleLeave = async () => {
     closeAll();
@@ -239,6 +313,10 @@ export default function Room() {
     cameraStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
     emit('leave-room', {});
+    setMessages([]);
+    setMessageAcks({});
+    setSharedFiles({});
+    setMySharedFileId(null);
     await apiLeaveRoom(roomId, user.uuid);
     navigate('/rooms');
   };
@@ -336,6 +414,8 @@ export default function Room() {
             remoteStreams={remoteStreams}
             widgets={widgets}
             roomUsers={roomUsers}
+            sharedFiles={sharedFiles}
+            mySharedFileId={mySharedFileId}
           />
         </div>
         <Widgets
@@ -343,8 +423,34 @@ export default function Room() {
           timer={myTimer}
           onEmojiChange={handleEmojiChange}
           onTimerUpdate={handleTimerUpdate}
+          uuid={user?.uuid}
+          files={myFiles}
+          onFilesChange={setMyFiles}
+          sharedFileId={mySharedFileId}
+          onShareFile={handleShareFile}
+          onUnshareFile={handleUnshareFile}
+          messages={messages}
+          messageAcks={messageAcks}
+          onSendMessage={handleSendMessage}
+          onAckMessage={handleAckMessage}
+          roomUsers={roomUsers}
         />
       </Content>
+      {/* Incoming message popup */}
+      <Modal
+        open={!!incomingMsg}
+        onCancel={() => setIncomingMsg(null)}
+        title={`来自 ${incomingMsg?.senderName} 的消息`}
+        footer={[
+          <Button key="ack" type="primary" onClick={() => {
+            handleAckMessage(incomingMsg.id);
+            setIncomingMsg(null);
+          }}>签收</Button>,
+          <Button key="close" onClick={() => setIncomingMsg(null)}>关闭</Button>,
+        ]}
+      >
+        <div style={{ fontSize: 16, padding: '16px 0' }}>{incomingMsg?.content}</div>
+      </Modal>
     </Layout>
   );
 }

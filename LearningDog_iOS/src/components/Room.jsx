@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { NavBar, Button, Toast, Space } from 'antd-mobile';
+import { NavBar, Button, Toast, Space, Dialog } from 'antd-mobile';
 import { useApp } from '../App';
-import { apiLeaveRoom } from '../utils/api';
+import { apiLeaveRoom, apiGetFiles, getFileDownloadUrl } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createCompressedStream, createBlurredStream } from '../utils/mediaProcessing';
 import { ensureNativeCameraPermission } from '../utils/photoLibrary';
@@ -24,6 +24,12 @@ export default function Room() {
   const [myEmoji, setMyEmoji] = useState('');
   const [myTimer, setMyTimer] = useState({ mode: 'up', running: false, seconds: 0 });
   const [roomUsers, setRoomUsers] = useState([]);
+  const [myFiles, setMyFiles] = useState([]);
+  const [sharedFiles, setSharedFiles] = useState({});
+  const [mySharedFileId, setMySharedFileId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageAcks, setMessageAcks] = useState({});
+  const [incomingMsg, setIncomingMsg] = useState(null);
 
   const localVideoRef = useRef(null);
   const cameraStreamRef = useRef(null);
@@ -117,6 +123,45 @@ export default function Room() {
     });
     return () => { cleanupUpdate(); cleanupStates(); };
   }, [on]);
+
+  // Load user files
+  useEffect(() => {
+    if (user?.uuid) apiGetFiles(user.uuid).then(setMyFiles).catch(() => {});
+  }, [user?.uuid]);
+
+  // File share events
+  useEffect(() => {
+    const c1 = on('file-share', ({ uuid, fileId, originalName, mimeType }) => {
+      setSharedFiles(prev => ({ ...prev, [uuid]: { fileId, originalName, mimeType } }));
+    });
+    const c2 = on('file-unshare', ({ uuid }) => {
+      setSharedFiles(prev => { const n = { ...prev }; delete n[uuid]; return n; });
+    });
+    const c3 = on('shared-files-state', (state) => {
+      setSharedFiles(prev => ({ ...prev, ...state }));
+    });
+    return () => { c1(); c2(); c3(); };
+  }, [on]);
+
+  // Message events
+  useEffect(() => {
+    const c1 = on('room-message', (msg) => {
+      setMessages(prev => [...prev, msg]);
+      if (msg.senderUuid !== user?.uuid) setIncomingMsg(msg);
+    });
+    const c2 = on('message-ack', ({ messageId, userUuid, username, ackedAt }) => {
+      setMessageAcks(prev => {
+        const existing = prev[messageId] || [];
+        if (existing.find(a => a.userUuid === userUuid)) return prev;
+        return { ...prev, [messageId]: [...existing, { userUuid, username, ackedAt }] };
+      });
+    });
+    const c3 = on('room-messages-history', ({ messages: msgs, acks }) => {
+      setMessages(msgs);
+      setMessageAcks(acks || {});
+    });
+    return () => { c1(); c2(); c3(); };
+  }, [on, user?.uuid]);
 
   const openCamera = async (facing, blur) => {
     try {

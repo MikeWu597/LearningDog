@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const authRoutes = require('./routes/auth');
 const roomRoutes = require('./routes/rooms');
 const recordRoutes = require('./routes/records');
+const fileRoutes = require('./routes/files');
 const { setupSocket } = require('./socket/index');
 const { createMediaRelayServer } = require('./socket/mediaRelay');
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/records', recordRoutes);
+app.use('/api/files', fileRoutes);
 
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'LearningDog server is running' });

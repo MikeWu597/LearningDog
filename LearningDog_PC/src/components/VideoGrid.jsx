@@ -11,6 +11,8 @@ export default function VideoGrid({
   remoteStreams,
   widgets,
   roomUsers = [],
+  sharedFiles = {},
+  mySharedFileId,
 }) {
   const cols = gridSize === 2 ? 2 : gridSize === 4 ? 2 : 3;
   const rows = gridSize === 2 ? 1 : gridSize === 4 ? 2 : 3;
@@ -28,6 +30,7 @@ export default function VideoGrid({
       emoji={localEmoji}
       timer={localTimer}
       networkStatus="good"
+      sharedFile={mySharedFileId ? { fileId: mySharedFileId } : null}
     />
   );
 
@@ -35,6 +38,7 @@ export default function VideoGrid({
   roomUsers.forEach(roomUser => {
     const remote = remoteStreams[roomUser.socketId];
     const widget = widgets[roomUser.uuid];
+    const sf = sharedFiles[roomUser.uuid];
     cells.push(
       <VideoCell
         key={roomUser.socketId}
@@ -44,6 +48,7 @@ export default function VideoGrid({
         emoji={widget?.emoji?.emoji || ''}
         timer={widget?.clock || null}
         networkStatus={remote ? 'good' : 'none'}
+        sharedFile={sf || null}
       />
     );
   });
