@@ -31,7 +31,7 @@ export default function Room() {
   const myEmojiRef = useRef('');
   const myTimerRef = useRef({ mode: 'up', running: false, seconds: 0 });
 
-  const { remoteStreams, closeAll } = useWebRTC({
+  const { remoteStreams, closeAll, trafficStats } = useWebRTC({
     socket,
     localStream,
     roomId,
@@ -181,6 +181,10 @@ export default function Room() {
     emit('widget-update', { roomId, type: 'clock', data: timerData });
   };
 
+  const [showTraffic, setShowTraffic] = useState(false);
+  const formatBytes = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+  const formatRate = (b) => b < 1024 ? b + ' B/s' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB/s' : (b / 1048576).toFixed(1) + ' MB/s';
+
   const totalUsers = roomUsers.length + 1;
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
 
@@ -212,11 +216,23 @@ export default function Room() {
                 {blurOn ? '🔓' : '🔒'}
               </Button>
             )}
+            <Button size="mini" color={showTraffic ? 'primary' : 'default'} onClick={() => setShowTraffic(v => !v)}>
+              📊
+            </Button>
           </Space>
         }
       >
         自习室
       </NavBar>
+
+      {showTraffic && (
+        <div style={{ background: '#dbeafe', display: 'flex', justifyContent: 'center', gap: 12, padding: '3px 8px', fontSize: 10, color: '#1e3a5f' }}>
+          <span>↑ {formatRate(trafficStats.sendRate)}</span>
+          <span>↓ {formatRate(trafficStats.recvRate)}</span>
+          <span>已发 {formatBytes(trafficStats.sent)}</span>
+          <span>已收 {formatBytes(trafficStats.received)}</span>
+        </div>
+      )}
 
       {connectionState === 'reconnecting' && (
         <div style={{ background: '#faad14', color: '#000', textAlign: 'center', padding: '2px 8px', fontSize: 11 }}>

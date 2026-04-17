@@ -5,6 +5,7 @@ import {
   CameraOutlined, DesktopOutlined,
   ArrowLeftOutlined,
   EyeOutlined, EyeInvisibleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { useApp } from '../App';
 import { apiLeaveRoom } from '../utils/api';
@@ -39,7 +40,7 @@ export default function Room() {
   const myEmojiRef = useRef('');
   const myTimerRef = useRef({ mode: 'up', running: false, seconds: 0 });
 
-  const { remoteStreams, closeAll } = useWebRTC({
+  const { remoteStreams, closeAll, trafficStats } = useWebRTC({
     socket,
     localStream,
     roomId,
@@ -253,6 +254,10 @@ export default function Room() {
     emit('widget-update', { roomId, type: 'clock', data: timerData });
   };
 
+  const [showTraffic, setShowTraffic] = useState(false);
+  const formatBytes = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+  const formatRate = (b) => b < 1024 ? b + ' B/s' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB/s' : (b / 1048576).toFixed(1) + ' MB/s';
+
   // Calculate grid size
   const totalUsers = roomUsers.length + 1;
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
@@ -297,8 +302,23 @@ export default function Room() {
               />
             </Tooltip>
           )}
+          <Tooltip title="流量统计">
+            <Button
+              type={showTraffic ? 'primary' : 'default'}
+              icon={<BarChartOutlined />}
+              onClick={() => setShowTraffic(v => !v)}
+            />
+          </Tooltip>
         </Space>
       </Header>
+      {showTraffic && (
+        <div style={{ background: '#dbeafe', display: 'flex', justifyContent: 'center', gap: 24, padding: '4px 16px', fontSize: 12, color: '#1e3a5f' }}>
+          <span>↑ {formatRate(trafficStats.sendRate)}</span>
+          <span>↓ {formatRate(trafficStats.recvRate)}</span>
+          <span>已发送 {formatBytes(trafficStats.sent)}</span>
+          <span>已接收 {formatBytes(trafficStats.received)}</span>
+        </div>
+      )}
       {connectionState === 'reconnecting' && (
         <div style={{ background: '#faad14', color: '#000', textAlign: 'center', padding: '4px 8px', fontSize: 12 }}>
           连接已断开，正在重连...

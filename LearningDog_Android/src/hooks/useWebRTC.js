@@ -29,6 +29,22 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera', 
   const sourceTypeRef = useRef(sourceType);
   const [remoteStreams, setRemoteStreams] = useState({});
 
+  // Traffic tracking
+  const trafficRef = useRef({ sent: 0, received: 0, lastSent: 0, lastReceived: 0 });
+  const [trafficStats, setTrafficStats] = useState({ sent: 0, received: 0, sendRate: 0, recvRate: 0 });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const t = trafficRef.current;
+      const sendRate = t.sent - t.lastSent;
+      const recvRate = t.received - t.lastReceived;
+      t.lastSent = t.sent;
+      t.lastReceived = t.received;
+      setTrafficStats({ sent: t.sent, received: t.received, sendRate, recvRate });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     sourceTypeRef.current = sourceType;
   }, [sourceType]);
@@ -103,6 +119,7 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera', 
           }
 
           const frame = await blob.arrayBuffer();
+          trafficRef.current.sent += frame.byteLength;
           socket.current.emit('media:frame', {
             roomId,
             frame,
@@ -137,7 +154,9 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera', 
 
     const handleFrame = ({ socketId, uuid, username, sourceType: remoteSourceType, mimeType, frame }) => {
       lastFrameTimeRef.current.set(socketId, Date.now());
-      const frameUrl = URL.createObjectURL(frameToBlob(frame, mimeType || FRAME_MIME_TYPE));
+      const blob = frameToBlob(frame, mimeType || FRAME_MIME_TYPE);
+      trafficRef.current.received += blob.size;
+      const frameUrl = URL.createObjectURL(blob);
       const existingUrl = frameUrlsRef.current.get(socketId);
       if (existingUrl) {
         URL.revokeObjectURL(existingUrl);
@@ -221,5 +240,5 @@ export function useWebRTC({ socket, localStream, roomId, sourceType = 'camera', 
     }
   }, [removeRemote, stopPublishing]);
 
-  return { remoteStreams, closeAll };
+  return { remoteStreams, closeAll, trafficStats };
 }
