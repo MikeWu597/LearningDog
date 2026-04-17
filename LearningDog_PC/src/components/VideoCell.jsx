@@ -56,7 +56,7 @@ export default function VideoCell({
     <div
       style={{
         position: 'relative',
-        background: '#1a1a2e',
+        background: '#c7ddf5',
         borderRadius: 8,
         overflow: 'hidden',
         display: 'flex',
@@ -79,7 +79,7 @@ export default function VideoCell({
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       ) : (
-        <div style={{ color: '#666', fontSize: 48 }}>
+        <div style={{ color: '#8ba4c4', fontSize: 48 }}>
           {emoji || '📷'}
         </div>
       )}
@@ -131,9 +131,9 @@ export default function VideoCell({
             transform: 'translate(-50%, -50%)',
             background: 'rgba(0,0,0,0.45)',
             color: '#fff',
-            padding: '6px 16px',
-            borderRadius: 8,
-            fontSize: 20,
+            padding: '8px 20px',
+            borderRadius: 10,
+            fontSize: 24,
             whiteSpace: 'nowrap',
             maxWidth: '80%',
             textAlign: 'center',

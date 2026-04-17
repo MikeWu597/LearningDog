@@ -70,13 +70,13 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
         display: 'flex',
         justifyContent: 'center',
         gap: 12,
-        background: '#16213e',
+        background: '#dbeafe',
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
       }}>
-        <Button size="small" onClick={() => setStatusOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+        <Button size="small" onClick={() => setStatusOpen(true)} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
           ✏️ {emoji || '状态'}
         </Button>
-        <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+        <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
           ⏱️ {timer?.running ? formatTime(localSeconds) : '计时器'}
         </Button>
       </div>
@@ -89,8 +89,14 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
           maxLength={6}
           placeholder="最多6个字"
           onChange={val => setStatusText(val)}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 8 }}
         />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {['📚', '✍️', '💪', '🔥', '🎯', '😴', '🤔', '☕', '🧠', '🎵'].map(e => (
+            <Button key={e} size="mini" style={{ fontSize: 18, padding: '4px 8px' }}
+              onClick={() => { setStatusText(e); onEmojiChange(e); setStatusOpen(false); }}>{e}</Button>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button block color="primary" onClick={() => { onEmojiChange(statusText.trim()); setStatusOpen(false); }}>确定</Button>
           <Button block onClick={() => { setStatusText(''); onEmojiChange(''); setStatusOpen(false); }}>清除</Button>

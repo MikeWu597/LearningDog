@@ -258,11 +258,11 @@ export default function Room() {
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
 
   return (
-    <Layout style={{ height: '100vh', background: '#1a1a2e' }}>
-      <Header style={{ background: '#16213e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
+    <Layout style={{ height: '100vh', background: '#eef4fb' }}>
+      <Header style={{ background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
         <Space>
-          <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleLeave} style={{ color: '#fff' }} />
-          <Text style={{ color: '#fff', fontSize: 16 }}>自习室</Text>
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleLeave} style={{ color: '#1e3a5f' }} />
+          <Text style={{ color: '#1e3a5f', fontSize: 16 }}>自习室</Text>
         </Space>
         <Space>
           <Tooltip title={cameraOn ? '关闭摄像头' : '开启摄像头'}>

@@ -192,10 +192,10 @@ export default function Room() {
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
 
   return (
-    <div className="mobile-screen mobile-screen-dark">
+    <div className="mobile-screen" style={{ background: '#eef4fb' }}>
       <NavBar
         onBack={handleLeave}
-        style={{ background: '#16213e', color: '#fff', '--adm-color-text': '#fff' }}
+        style={{ background: '#dbeafe', color: '#1e3a5f', '--adm-color-text': '#1e3a5f' }}
         right={
           <Space>
             <Button

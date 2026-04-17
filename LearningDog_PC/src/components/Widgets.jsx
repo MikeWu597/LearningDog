@@ -69,8 +69,7 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
   useEffect(() => { setStatusText(emoji || ''); }, [emoji]);
 
   const statusContent = (
-    <Space direction="vertical" size="small" style={{ width: 200 }}>
-      <Text strong>设置状态</Text>
+    <Space direction="vertical" size="small" style={{ width: 220 }}>
       <Input
         value={statusText}
         maxLength={6}
@@ -78,6 +77,12 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
         onChange={e => setStatusText(e.target.value)}
         onPressEnter={() => onEmojiChange(statusText.trim())}
       />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {['📚', '✍️', '💪', '🔥', '🎯', '😴', '🤔', '☕', '🧠', '🎵'].map(e => (
+          <Button key={e} size="small" type="text" style={{ fontSize: 18, padding: '2px 6px', minWidth: 0 }}
+            onClick={() => { setStatusText(e); onEmojiChange(e); }}>{e}</Button>
+        ))}
+      </div>
       <Space>
         <Button size="small" type="primary" onClick={() => onEmojiChange(statusText.trim())}>确定</Button>
         <Button size="small" onClick={() => { setStatusText(''); onEmojiChange(''); }}>清除</Button>
@@ -87,7 +92,6 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
 
   const timerContent = (
     <Space direction="vertical" size="small" style={{ width: 200 }}>
-      <Text strong>计时器</Text>
       <div style={{ textAlign: 'center', fontSize: 24, fontFamily: 'monospace' }}>
         {formatTime(localSeconds)}
       </div>
@@ -120,14 +124,14 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
   );
 
   return (
-    <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8 }}>
+    <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8, background: '#dbeafe' }}>
       <Popover content={statusContent} title="设置状态" trigger="click" placement="top">
-        <Button icon={<EditOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+        <Button icon={<EditOutlined />} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
           {emoji || '状态'}
         </Button>
       </Popover>
       <Popover content={timerContent} title="计时器" trigger="click" placement="top">
-        <Button icon={<ClockCircleOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+        <Button icon={<ClockCircleOutlined />} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
           {timer?.running ? formatTime(localSeconds) : '计时器'}
         </Button>
       </Popover>
