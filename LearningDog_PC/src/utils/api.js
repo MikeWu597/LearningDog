@@ -53,23 +53,6 @@ export async function apiGetRoom(roomId) {
   return res.json();
 }
 
-export async function apiStartFocus(uuid, roomId) {
-  const res = await fetch(`${serverUrl()}/api/records/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uuid, roomId }),
-  });
-  return res.json();
-}
-
-export async function apiStopFocus(uuid) {
-  const res = await fetch(`${serverUrl()}/api/records/stop`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uuid }),
-  });
-  return res.json();
-}
 
 export async function apiGetRecords(uuid) {
   const res = await fetch(`${serverUrl()}/api/records/${uuid}`);

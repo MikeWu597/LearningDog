@@ -1,7 +1,7 @@
 /**
  * Apply Gaussian blur to a video stream using canvas
  */
-export function createBlurredStream(stream, blurRadius = 8, maxWidth = 480, fps = 12) {
+export function createBlurredStream(stream, blurRadius = 8, maxWidth = 480, fps = 6) {
   const videoTrack = stream.getVideoTracks()[0];
   if (!videoTrack) return stream;
 
@@ -49,7 +49,7 @@ export function createBlurredStream(stream, blurRadius = 8, maxWidth = 480, fps 
 /**
  * Reduce video frame rate and resolution for mobile
  */
-export function createCompressedStream(stream, maxWidth = 480, fps = 12) {
+export function createCompressedStream(stream, maxWidth = 480, fps = 6) {
   const videoTrack = stream.getVideoTracks()[0];
   if (!videoTrack) return stream;
 

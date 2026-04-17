@@ -1,5 +1,7 @@
 function noop() {}
 
+const db = require('../db');
+
 class MediaRelayServer {
   constructor(io) {
     this.io = io;
@@ -64,12 +66,58 @@ class MediaRelayServer {
 
     room.publishers.delete(socketId);
 
+    // Auto-end focus session when video stream stops
+    if (publisher.uuid) {
+      this._endFocus(publisher.uuid);
+    }
+
     if (notify) {
       this.io.to(room.socketRoom).emit('media:stream-stopped', {
         socketId: publisher.socketId,
         uuid: publisher.uuid,
         username: publisher.username,
       });
+    }
+  }
+
+  _startFocus(uuid, roomId) {
+    try {
+      // Ensure user exists
+      const userExists = db.prepare('SELECT 1 FROM users WHERE uuid = ?').get(uuid);
+      if (!userExists) return;
+
+      // End any existing active session first
+      const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
+      if (active) {
+        const now = db.beijingNow();
+        const startMs = db.beijingToMs(active.start_time);
+        const duration = Math.floor((Date.now() - startMs) / 1000);
+        db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
+          .run(now, duration, active.id);
+      }
+
+      const now = db.beijingNow();
+      db.prepare('INSERT INTO focus_records (user_uuid, room_id, start_time) VALUES (?, ?, ?)')
+        .run(uuid, roomId || null, now);
+      console.log(`Auto-started focus for ${uuid} in room ${roomId}`);
+    } catch (err) {
+      console.error(`Failed to start focus for ${uuid}:`, err.message);
+    }
+  }
+
+  _endFocus(uuid) {
+    try {
+      const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
+      if (!active) return;
+
+      const now = db.beijingNow();
+      const startMs = db.beijingToMs(active.start_time);
+      const duration = Math.floor((Date.now() - startMs) / 1000);
+      db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
+        .run(now, duration, active.id);
+      console.log(`Auto-ended focus for ${uuid} (${duration}s)`);
+    } catch (err) {
+      console.error(`Failed to end focus for ${uuid}:`, err.message);
     }
   }
 
@@ -107,6 +155,8 @@ class MediaRelayServer {
 
         if (active) {
           const publisher = this.upsertPublisher(room, socket, sourceType || 'camera');
+          // Auto-start focus when video stream begins
+          this._startFocus(socket.data.uuid, roomId || socket.data.roomId);
           socket.to(room.socketRoom).emit('media:stream-started', publisher);
         } else {
           this.stopPublisher(room, socket.id, true);

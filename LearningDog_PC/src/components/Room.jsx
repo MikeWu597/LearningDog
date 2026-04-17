@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Space, message, Layout, Typography, Tooltip, Modal } from 'antd';
 import {
-  CameraOutlined, DesktopOutlined, StopOutlined,
-  ArrowLeftOutlined, SmileOutlined, ClockCircleOutlined,
+  CameraOutlined, DesktopOutlined,
+  ArrowLeftOutlined,
   EyeOutlined, EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import { useApp } from '../App';
-import { apiLeaveRoom, apiStartFocus, apiStopFocus } from '../utils/api';
+import { apiLeaveRoom } from '../utils/api';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createBlurredStream, createCompressedStream } from '../utils/mediaProcessing';
 import VideoGrid from './VideoGrid';
@@ -19,21 +19,25 @@ const { Text } = Typography;
 export default function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { user, socket, emit, on, request } = useApp();
+  const { user, socket, emit, on, request, connectionState } = useApp();
 
   const [localStream, setLocalStream] = useState(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [screenOn, setScreenOn] = useState(false);
   const [screenBlur, setScreenBlur] = useState(false);
+  const [cameraBlur, setCameraBlur] = useState(false);
   const [localSourceType, setLocalSourceType] = useState(null);
-  const [focusing, setFocusing] = useState(false);
   const [widgets, setWidgets] = useState({}); // { uuid: { type, data } }
   const [myEmoji, setMyEmoji] = useState('');
   const [myTimer, setMyTimer] = useState({ mode: 'up', running: false, seconds: 0 });
+  const [roomUsers, setRoomUsers] = useState([]);
 
   const localVideoRef = useRef(null);
   const screenStreamRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  const cameraBlurRef = useRef(false);
+  const myEmojiRef = useRef('');
+  const myTimerRef = useRef({ mode: 'up', running: false, seconds: 0 });
 
   const { remoteStreams, closeAll } = useWebRTC({
     socket,
@@ -44,28 +48,61 @@ export default function Room() {
     username: user?.username,
   });
 
-  // Join room via socket on mount
+  // Keep refs in sync for reconnect widget sync
+  useEffect(() => { myEmojiRef.current = myEmoji; }, [myEmoji]);
+  useEffect(() => { myTimerRef.current = myTimer; }, [myTimer]);
+
+  // Join room via socket on mount and on reconnect
   useEffect(() => {
     if (!socket.current || !user) return;
 
+    let isFirstJoin = true;
     const joinRoom = async () => {
       try {
         await request('join-room', { roomId, uuid: user.uuid, username: user.username });
+        // On reconnect, re-sync widget state
+        if (!isFirstJoin) {
+          if (myEmojiRef.current) {
+            emit('widget-update', { roomId, type: 'emoji', data: { emoji: myEmojiRef.current } });
+          }
+          if (myTimerRef.current.running || myTimerRef.current.seconds > 0) {
+            emit('widget-update', { roomId, type: 'clock', data: myTimerRef.current });
+          }
+        }
+        isFirstJoin = false;
       } catch (err) {
         message.error(err.message || '加入房间失败');
       }
     };
 
+    // Always register for reconnect
+    socket.current.on('connect', joinRoom);
     if (socket.current.connected) {
       joinRoom();
-    } else {
-      socket.current.on('connect', joinRoom);
     }
 
     return () => {
       socket.current?.off('connect', joinRoom);
     };
-  }, [socket, roomId, user, request]);
+  }, [socket, roomId, user, request, emit]);
+
+  // Track room users from socket events
+  useEffect(() => {
+    const cleanupRoomUsers = on('room-users', (users) => {
+      setRoomUsers(users.filter(u => u.uuid !== user?.uuid));
+    });
+    const cleanupUserJoined = on('user-joined', (userData) => {
+      if (userData.uuid === user?.uuid) return;
+      setRoomUsers(prev => {
+        const filtered = prev.filter(u => u.uuid !== userData.uuid);
+        return [...filtered, userData];
+      });
+    });
+    const cleanupUserLeft = on('user-left', (userData) => {
+      setRoomUsers(prev => prev.filter(u => u.socketId !== userData.socketId));
+    });
+    return () => { cleanupRoomUsers(); cleanupUserJoined(); cleanupUserLeft(); };
+  }, [on, user?.uuid]);
 
   // Listen for widget updates from other users
   useEffect(() => {
@@ -82,15 +119,17 @@ export default function Room() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, frameRate: 15 },
+        video: { width: 640, height: 480, frameRate: 8 },
         audio: false,
       });
-      const compressed = createCompressedStream(stream, 480, 12);
+      const processed = cameraBlurRef.current
+        ? createBlurredStream(stream, 8)
+        : createCompressedStream(stream, 480, 8);
       cameraStreamRef.current = stream;
-      setLocalStream(compressed);
+      setLocalStream(processed);
       setLocalSourceType('camera');
       setCameraOn(true);
-      if (localVideoRef.current) localVideoRef.current.srcObject = compressed;
+      if (localVideoRef.current) localVideoRef.current.srcObject = processed;
     } catch (err) {
       message.error('无法访问摄像头: ' + err.message);
     }
@@ -109,6 +148,20 @@ export default function Room() {
     }
   };
 
+  // Toggle camera blur
+  const toggleCameraBlur = () => {
+    const newBlur = !cameraBlurRef.current;
+    cameraBlurRef.current = newBlur;
+    setCameraBlur(newBlur);
+    if (cameraOn && cameraStreamRef.current) {
+      const processed = newBlur
+        ? createBlurredStream(cameraStreamRef.current, 8)
+        : createCompressedStream(cameraStreamRef.current, 480, 8);
+      setLocalStream(processed);
+      if (localVideoRef.current) localVideoRef.current.srcObject = processed;
+    }
+  };
+
   // Start screen sharing (Electron only)
   const startScreen = async () => {
     try {
@@ -124,17 +177,17 @@ export default function Room() {
               chromeMediaSource: 'desktop',
               chromeMediaSourceId: screenSource.id,
               maxWidth: 1280,
-              maxFrameRate: 10,
+              maxFrameRate: 6,
             },
           },
         });
       } else {
         stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { width: 1280, height: 720, frameRate: 10 },
+          video: { width: 1280, height: 720, frameRate: 6 },
         });
       }
 
-      const processed = screenBlur ? createBlurredStream(stream, 8) : createCompressedStream(stream, 1280, 10);
+      const processed = screenBlur ? createBlurredStream(stream, 8) : createCompressedStream(stream, 1280, 6);
       screenStreamRef.current = stream;
       setLocalStream(processed);
       setLocalSourceType('screen');
@@ -178,23 +231,6 @@ export default function Room() {
     }
   };
 
-  // Focus timer
-  const toggleFocus = async () => {
-    try {
-      if (focusing) {
-        await apiStopFocus(user.uuid);
-        setFocusing(false);
-        message.success('专注已结束');
-      } else {
-        await apiStartFocus(user.uuid, roomId);
-        setFocusing(true);
-        message.success('开始专注');
-      }
-    } catch (err) {
-      message.error('操作失败');
-    }
-  };
-
   // Leave room
   const handleLeave = async () => {
     closeAll();
@@ -202,9 +238,6 @@ export default function Room() {
     cameraStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
     emit('leave-room', {});
-    if (focusing) {
-      await apiStopFocus(user.uuid);
-    }
     await apiLeaveRoom(roomId, user.uuid);
     navigate('/rooms');
   };
@@ -221,7 +254,7 @@ export default function Room() {
   };
 
   // Calculate grid size
-  const totalUsers = Object.keys(remoteStreams).length + 1;
+  const totalUsers = roomUsers.length + 1;
   const gridSize = totalUsers <= 2 ? 2 : totalUsers <= 4 ? 4 : 9;
 
   return (
@@ -239,6 +272,15 @@ export default function Room() {
               onClick={cameraOn ? stopCamera : startCamera}
             />
           </Tooltip>
+          {cameraOn && (
+            <Tooltip title={cameraBlur ? '取消摄像头模糊' : '模糊摄像头'}>
+              <Button
+                type={cameraBlur ? 'primary' : 'default'}
+                icon={cameraBlur ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                onClick={toggleCameraBlur}
+              />
+            </Tooltip>
+          )}
           <Tooltip title={screenOn ? '停止共享屏幕' : '共享屏幕'}>
             <Button
               type={screenOn ? 'primary' : 'default'}
@@ -255,18 +297,13 @@ export default function Room() {
               />
             </Tooltip>
           )}
-          <Tooltip title={focusing ? '结束专注' : '开始专注'}>
-            <Button
-              type={focusing ? 'primary' : 'default'}
-              danger={focusing}
-              icon={<ClockCircleOutlined />}
-              onClick={toggleFocus}
-            >
-              {focusing ? '专注中' : '专注'}
-            </Button>
-          </Tooltip>
         </Space>
       </Header>
+      {connectionState === 'reconnecting' && (
+        <div style={{ background: '#faad14', color: '#000', textAlign: 'center', padding: '4px 8px', fontSize: 12 }}>
+          连接已断开，正在重连...
+        </div>
+      )}
       <Content style={{ padding: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ flex: 1, minHeight: 0 }}>
           <VideoGrid
@@ -278,6 +315,7 @@ export default function Room() {
             localTimer={myTimer}
             remoteStreams={remoteStreams}
             widgets={widgets}
+            roomUsers={roomUsers}
           />
         </div>
         <Widgets

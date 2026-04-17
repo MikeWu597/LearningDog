@@ -45,17 +45,7 @@ function setupSocket(io, mediaRelay) {
             }
           }
         } else {
-          // Different room: end old focus session and clean up old widgets
-          try {
-            const active = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
-            if (active) {
-              const now = db.beijingNow();
-              const startMs = db.beijingToMs(active.start_time);
-              const duration = Math.floor((Date.now() - startMs) / 1000);
-              db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
-                .run(now, duration, active.id);
-            }
-          } catch (_) {}
+          // Different room: clean up old widgets
           removeUserWidgets(pending.roomId, uuid);
         }
       }
@@ -108,6 +98,11 @@ function setupSocket(io, mediaRelay) {
     mediaRelay.registerSocket(socket);
     setupWidgets(socket);
 
+    // Heartbeat for client-side RTT measurement
+    socket.on('heartbeat', (data, callback = () => {}) => {
+      callback({ ts: Date.now() });
+    });
+
     socket.on('disconnect', () => {
       console.log(`Socket disconnected: ${socket.id}`);
       handleLeaveRoom(socket, io, mediaRelay, false);
@@ -138,14 +133,8 @@ function handleLeaveRoom(socket, io, mediaRelay, intentional) {
       db.prepare('DELETE FROM room_members WHERE room_id = ? AND user_uuid = ?').run(roomId, uuid);
     } catch (_) {}
 
-    // Check for active focus session
-    const active = !intentional
-      ? (() => { try { return db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid); } catch (_) { return null; } })()
-      : null;
-
-    if (active) {
-      // Unexpected disconnect with active focus: start 30-second grace period
-      // Cancel any existing pending timer for this user
+    if (!intentional) {
+      // Unexpected disconnect: start grace period for widget preservation
       const existing = disconnectedUsers.get(uuid);
       if (existing) {
         clearTimeout(existing.timer);
@@ -153,18 +142,6 @@ function handleLeaveRoom(socket, io, mediaRelay, intentional) {
 
       const timer = setTimeout(() => {
         disconnectedUsers.delete(uuid);
-        // End focus session
-        try {
-          const stillActive = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
-          if (stillActive) {
-            const now = db.beijingNow();
-            const startMs = db.beijingToMs(stillActive.start_time);
-            const duration = Math.floor((Date.now() - startMs) / 1000);
-            db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
-              .run(now, duration, stillActive.id);
-            console.log(`Auto-ended focus session for ${uuid} after ${RECONNECT_TIMEOUT / 1000}s timeout`);
-          }
-        } catch (_) {}
         // Clean up widgets
         removeUserWidgets(roomId, uuid);
         const memberCount = io.sockets.adapter.rooms.get(socketRoom)?.size || 0;
@@ -180,25 +157,11 @@ function handleLeaveRoom(socket, io, mediaRelay, intentional) {
         socketId: socket.id,
       });
     } else {
-      // No active focus or intentional leave: clean up immediately
+      // Intentional leave: clean up immediately
       removeUserWidgets(roomId, uuid);
       const memberCount = io.sockets.adapter.rooms.get(socketRoom)?.size || 0;
       if (memberCount === 0) {
         cleanupRoomWidgets(roomId);
-      }
-
-      // For intentional leave, end any active focus session immediately
-      if (intentional) {
-        try {
-          const focusActive = db.prepare('SELECT * FROM focus_records WHERE user_uuid = ? AND end_time IS NULL').get(uuid);
-          if (focusActive) {
-            const now = db.beijingNow();
-            const startMs = db.beijingToMs(focusActive.start_time);
-            const duration = Math.floor((Date.now() - startMs) / 1000);
-            db.prepare('UPDATE focus_records SET end_time = ?, duration_seconds = ? WHERE id = ?')
-              .run(now, duration, focusActive.id);
-          }
-        } catch (_) {}
       }
     }
   }

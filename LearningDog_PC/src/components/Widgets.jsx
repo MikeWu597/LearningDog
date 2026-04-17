@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button, Space, Popover, InputNumber, Radio, Typography } from 'antd';
-import { SmileOutlined, ClockCircleOutlined, CaretRightOutlined, PauseOutlined, UndoOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Button, Space, Popover, InputNumber, Input, Typography } from 'antd';
+import { EditOutlined, ClockCircleOutlined, CaretRightOutlined, PauseOutlined, UndoOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
-
-const EMOJI_LIST = ['📚', '✍️', '💪', '🔥', '🎯', '⭐', '🧠', '💡', '☕', '🎵', '😴', '🤔', '😤', '🥳', '❤️', '👍'];
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -36,6 +34,17 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
     return () => clearInterval(interval);
   }, [timer?.running, timer?.mode]);
 
+  // Periodic timer sync to server
+  const localSecondsRef = useRef(localSeconds);
+  useEffect(() => { localSecondsRef.current = localSeconds; }, [localSeconds]);
+  useEffect(() => {
+    if (!timer?.running) return;
+    const syncId = setInterval(() => {
+      onTimerUpdate({ ...timer, seconds: localSecondsRef.current });
+    }, 10000);
+    return () => clearInterval(syncId);
+  }, [timer?.running, timer?.mode, onTimerUpdate]);
+
   const startTimer = (mode) => {
     const seconds = mode === 'down' ? countdownMinutes * 60 : 0;
     setLocalSeconds(seconds);
@@ -55,19 +64,25 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
     onTimerUpdate({ mode: 'up', running: false, seconds: 0 });
   };
 
-  const emojiContent = (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, width: 200 }}>
-      {EMOJI_LIST.map(e => (
-        <Button
-          key={e}
-          type={emoji === e ? 'primary' : 'text'}
-          style={{ fontSize: 24, height: 44 }}
-          onClick={() => onEmojiChange(emoji === e ? '' : e)}
-        >
-          {e}
-        </Button>
-      ))}
-    </div>
+  const [statusText, setStatusText] = useState(emoji || '');
+
+  useEffect(() => { setStatusText(emoji || ''); }, [emoji]);
+
+  const statusContent = (
+    <Space direction="vertical" size="small" style={{ width: 200 }}>
+      <Text strong>设置状态</Text>
+      <Input
+        value={statusText}
+        maxLength={6}
+        placeholder="最多6个字"
+        onChange={e => setStatusText(e.target.value)}
+        onPressEnter={() => onEmojiChange(statusText.trim())}
+      />
+      <Space>
+        <Button size="small" type="primary" onClick={() => onEmojiChange(statusText.trim())}>确定</Button>
+        <Button size="small" onClick={() => { setStatusText(''); onEmojiChange(''); }}>清除</Button>
+      </Space>
+    </Space>
   );
 
   const timerContent = (
@@ -106,9 +121,9 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
 
   return (
     <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8 }}>
-      <Popover content={emojiContent} title="选择 Emoji" trigger="click" placement="top">
-        <Button icon={<SmileOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
-          {emoji || 'Emoji'}
+      <Popover content={statusContent} title="设置状态" trigger="click" placement="top">
+        <Button icon={<EditOutlined />} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+          {emoji || '状态'}
         </Button>
       </Popover>
       <Popover content={timerContent} title="计时器" trigger="click" placement="top">

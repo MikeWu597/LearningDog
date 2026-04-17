@@ -1,8 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
-const FRAME_INTERVAL_MS = 180;
+const FRAME_INTERVAL_MS = 300;
 const FRAME_MIME_TYPE = 'image/webp';
-const FRAME_QUALITY = 0.55;
+const FRAME_QUALITY = 0.4;
 
 function frameToBlob(frame, mimeType) {
   if (frame instanceof Blob) {

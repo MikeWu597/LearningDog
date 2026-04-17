@@ -50,7 +50,7 @@ export default function VideoCell({
     return () => clearInterval(interval);
   }, [timer?.running, timer?.mode, timer?.seconds]);
 
-  const statusColor = networkStatus === 'good' ? '#52c41a' : networkStatus === 'medium' ? '#faad14' : '#ff4d4f';
+  const statusColor = networkStatus === 'good' ? '#52c41a' : networkStatus === 'none' ? '#aaa' : networkStatus === 'medium' ? '#faad14' : '#ff4d4f';
 
   return (
     <div
@@ -121,15 +121,22 @@ export default function VideoCell({
         />
       </div>
 
-      {/* Emoji overlay - top right */}
+      {/* Status overlay - center */}
       {emoji && (
         <div
           style={{
             position: 'absolute',
-            top: 8,
-            right: 8,
-            fontSize: 32,
-            textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(0,0,0,0.45)',
+            color: '#fff',
+            padding: '6px 16px',
+            borderRadius: 8,
+            fontSize: 20,
+            whiteSpace: 'nowrap',
+            maxWidth: '80%',
+            textAlign: 'center',
           }}
         >
           {emoji}

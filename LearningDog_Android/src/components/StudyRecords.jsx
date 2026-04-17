@@ -120,22 +120,24 @@ export default function StudyRecords() {
 
       <div className="mobile-main" style={{ overflow: 'auto', padding: 12 }}>
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+        <Card style={{ borderRadius: 8, marginBottom: 8, textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: '#999' }}>今日专注</div>
+          <div style={{ fontSize: 28, fontWeight: 'bold', margin: '4px 0' }}>
+            🔥 {todayRecord ? formatDuration(todayRecord.total_seconds) : '0分钟'}
+          </div>
+        </Card>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
           <Card style={{ borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: '#999' }}>总专注时长</div>
-            <div style={{ fontSize: 16, fontWeight: 'bold' }}>{stats ? formatDuration(stats.totalSeconds) : '-'}</div>
+            <div style={{ fontSize: 12, color: '#999' }}>累计专注</div>
+            <div style={{ fontSize: 14, fontWeight: 'bold' }}>{stats ? formatDuration(stats.totalSeconds) : '-'}</div>
           </Card>
           <Card style={{ borderRadius: 8 }}>
             <div style={{ fontSize: 12, color: '#999' }}>总天数</div>
-            <div style={{ fontSize: 16, fontWeight: 'bold' }}>{stats?.totalDays || 0} 天</div>
+            <div style={{ fontSize: 14, fontWeight: 'bold' }}>{stats?.totalDays || 0} 天</div>
           </Card>
           <Card style={{ borderRadius: 8 }}>
             <div style={{ fontSize: 12, color: '#999' }}>平均每日</div>
-            <div style={{ fontSize: 16, fontWeight: 'bold' }}>{stats ? formatDuration(stats.avgDailySeconds) : '-'}</div>
-          </Card>
-          <Card style={{ borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: '#999' }}>总会话数</div>
-            <div style={{ fontSize: 16, fontWeight: 'bold' }}>{stats?.totalSessions || 0} 次</div>
+            <div style={{ fontSize: 14, fontWeight: 'bold' }}>{stats ? formatDuration(stats.avgDailySeconds) : '-'}</div>
           </Card>
         </div>
 
@@ -192,21 +194,37 @@ export default function StudyRecords() {
       <div style={{ position: 'absolute', left: -9999 }}>
         <div ref={posterRef} style={{
           width: 360, padding: 24,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: '#fff', fontFamily: 'system-ui, sans-serif',
+          background: 'linear-gradient(135deg, #e8f4fd 0%, #ffffff 50%, #dbeafe 100%)',
+          color: '#1e293b', fontFamily: 'system-ui, sans-serif',
         }}>
-          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 32 }}>🐕 LearningDog</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>在线自习 · 互相监督</div>
+          <div style={{ textAlign: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: '#64748b' }}>{user?.username} 的学习报告</div>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{dayjs().format('YYYY年MM月DD日')}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: 16 }}>
-            <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>{user?.username}</div>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>📅 {dayjs().format('YYYY年MM月DD日')}</div>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>🔥 今日专注: {todayRecord ? formatDuration(todayRecord.total_seconds) : '0分钟'}</div>
-            <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 6 }}>📊 累计专注: {stats ? formatDuration(stats.totalSeconds) : '0分钟'}</div>
-            <div style={{ fontSize: 13, opacity: 0.9 }}>📈 平均每日: {stats ? formatDuration(stats.avgDailySeconds) : '0分钟'}</div>
+          <div style={{ background: '#2563eb', borderRadius: 14, padding: 24, textAlign: 'center', margin: '12px 0' }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 6 }}>今日专注</div>
+            <div style={{ fontSize: 36, fontWeight: 'bold', color: '#fff' }}>
+              {todayRecord ? formatDuration(todayRecord.total_seconds) : '0分钟'}
+            </div>
           </div>
-          <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, opacity: 0.6 }}>坚持学习，成为更好的自己</div>
+          <div style={{ display: 'flex', justifyContent: 'space-around', margin: '16px 0', padding: '0 4px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>累计专注</div>
+              <div style={{ fontSize: 14, fontWeight: '600', color: '#334155' }}>{stats ? formatDuration(stats.totalSeconds) : '0分钟'}</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>累计天数</div>
+              <div style={{ fontSize: 14, fontWeight: '600', color: '#334155' }}>{stats?.totalDays || 0} 天</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3 }}>平均每日</div>
+              <div style={{ fontSize: 14, fontWeight: '600', color: '#334155' }}>{stats ? formatDuration(stats.avgDailySeconds) : '0分钟'}</div>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: 16, color: '#2563eb', fontWeight: 'bold' }}>🐕 LearningDog</div>
+            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>在线自习 · 互相监督</div>
+          </div>
         </div>
       </div>
     </div>

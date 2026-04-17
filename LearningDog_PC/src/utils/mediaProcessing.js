@@ -21,15 +21,15 @@ export function createBlurredStream(stream, blurRadius = 10) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
   }
-  setInterval(drawFrame, 1000 / 15);
+  setInterval(drawFrame, 1000 / 8);
 
-  return canvas.captureStream(15); // 15 fps
+  return canvas.captureStream(8); // 8 fps
 }
 
 /**
  * Reduce video frame rate and resolution
  */
-export function createCompressedStream(stream, maxWidth = 640, fps = 15) {
+export function createCompressedStream(stream, maxWidth = 640, fps = 8) {
   const videoTrack = stream.getVideoTracks()[0];
   if (!videoTrack) return stream;
 

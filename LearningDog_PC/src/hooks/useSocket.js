@@ -5,6 +5,7 @@ import { getServerUrl } from '../utils/server';
 export function useSocket() {
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState('disconnected');
 
   const connect = useCallback(() => {
     if (socketRef.current) {
@@ -12,10 +13,23 @@ export function useSocket() {
     }
     const url = getServerUrl();
     if (!url) return;
-    const socket = io(url, { transports: ['websocket', 'polling'] });
+    const socket = io(url, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
+    });
     socketRef.current = socket;
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('connect', () => {
+      setConnected(true);
+      setConnectionState('connected');
+    });
+    socket.on('disconnect', () => {
+      setConnected(false);
+      setConnectionState('reconnecting');
+    });
   }, []);
 
   const disconnect = useCallback(() => {
@@ -23,6 +37,7 @@ export function useSocket() {
       socketRef.current.disconnect();
       socketRef.current = null;
       setConnected(false);
+      setConnectionState('disconnected');
     }
   }, []);
 
@@ -65,5 +80,5 @@ export function useSocket() {
     socketRef.current?.off(event, handler);
   }, []);
 
-  return { socket: socketRef, connected, emit, on, off, request, connect, disconnect };
+  return { socket: socketRef, connected, connectionState, emit, on, off, request, connect, disconnect };
 }

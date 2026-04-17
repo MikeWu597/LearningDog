@@ -10,6 +10,7 @@ export default function VideoGrid({
   localTimer,
   remoteStreams,
   widgets,
+  roomUsers = [],
 }) {
   const cols = gridSize === 2 ? 2 : gridSize === 4 ? 2 : 3;
   const rows = gridSize === 2 ? 1 : gridSize === 4 ? 2 : 3;
@@ -30,18 +31,19 @@ export default function VideoGrid({
     />
   );
 
-  // Remote user cells
-  Object.entries(remoteStreams).forEach(([socketId, { stream, frameUrl, uuid, username }]) => {
-    const widget = widgets[uuid];
+  // Remote user cells - from roomUsers, with video overlay from remoteStreams
+  roomUsers.forEach(roomUser => {
+    const remote = remoteStreams[roomUser.socketId];
+    const widget = widgets[roomUser.uuid];
     cells.push(
       <VideoCell
-        key={socketId}
-        stream={stream}
-        frameUrl={frameUrl}
-        username={username || '用户'}
+        key={roomUser.socketId}
+        stream={remote?.stream}
+        frameUrl={remote?.frameUrl}
+        username={roomUser.username || '用户'}
         emoji={widget?.emoji?.emoji || ''}
         timer={widget?.clock || null}
-        networkStatus="good"
+        networkStatus={remote ? 'good' : 'none'}
       />
     );
   });

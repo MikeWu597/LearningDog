@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Popup, Stepper, Space } from 'antd-mobile';
-
-const EMOJI_LIST = ['📚', '✍️', '💪', '🔥', '🎯', '⭐', '🧠', '💡', '☕', '🎵', '😴', '🤔', '😤', '🥳', '❤️', '👍'];
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Popup, Stepper, Space, Input } from 'antd-mobile';
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -12,8 +10,11 @@ function formatTime(seconds) {
 }
 
 export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) {
-  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const [timerOpen, setTimerOpen] = useState(false);
+  const [statusText, setStatusText] = useState(emoji || '');
+
+  useEffect(() => { setStatusText(emoji || ''); }, [emoji]);
   const [localSeconds, setLocalSeconds] = useState(timer?.seconds || 0);
   const [countdownMinutes, setCountdownMinutes] = useState(25);
 
@@ -31,6 +32,17 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
     }, 1000);
     return () => clearInterval(interval);
   }, [timer?.running, timer?.mode]);
+
+  // Periodic timer sync to server
+  const localSecondsRef = useRef(localSeconds);
+  useEffect(() => { localSecondsRef.current = localSeconds; }, [localSeconds]);
+  useEffect(() => {
+    if (!timer?.running) return;
+    const syncId = setInterval(() => {
+      onTimerUpdate({ ...timer, seconds: localSecondsRef.current });
+    }, 10000);
+    return () => clearInterval(syncId);
+  }, [timer?.running, timer?.mode, onTimerUpdate]);
 
   const startTimer = (mode) => {
     const seconds = mode === 'down' ? countdownMinutes * 60 : 0;
@@ -61,28 +73,27 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
         background: '#16213e',
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
       }}>
-        <Button size="small" onClick={() => setEmojiOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
-          {emoji || '😊'} Emoji
+        <Button size="small" onClick={() => setStatusOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
+          ✏️ {emoji || '状态'}
         </Button>
         <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none' }}>
           ⏱️ {timer?.running ? formatTime(localSeconds) : '计时器'}
         </Button>
       </div>
 
-      {/* Emoji Popup */}
-      <Popup visible={emojiOpen} onMaskClick={() => setEmojiOpen(false)} bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 16 }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 12 }}>选择 Emoji</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          {EMOJI_LIST.map(e => (
-            <Button
-              key={e}
-              color={emoji === e ? 'primary' : 'default'}
-              style={{ fontSize: 24, height: 48 }}
-              onClick={() => { onEmojiChange(emoji === e ? '' : e); setEmojiOpen(false); }}
-            >
-              {e}
-            </Button>
-          ))}
+      {/* Status Popup */}
+      <Popup visible={statusOpen} onMaskClick={() => setStatusOpen(false)} bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 16 }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 12 }}>设置状态</div>
+        <Input
+          value={statusText}
+          maxLength={6}
+          placeholder="最多6个字"
+          onChange={val => setStatusText(val)}
+          style={{ marginBottom: 12 }}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button block color="primary" onClick={() => { onEmojiChange(statusText.trim()); setStatusOpen(false); }}>确定</Button>
+          <Button block onClick={() => { setStatusText(''); onEmojiChange(''); setStatusOpen(false); }}>清除</Button>
         </div>
       </Popup>
 
