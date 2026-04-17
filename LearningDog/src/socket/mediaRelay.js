@@ -1,14 +1,21 @@
 function noop() {}
 
 const db = require('../db');
+const faceDetection = require('../faceDetection');
+
+const FACE_CHECK_INTERVAL_MS = 3000; // Check every 3 seconds per user
+const FACE_COOLDOWN_MS = 10000; // After forcing camera off, wait before checking again
 
 class MediaRelayServer {
   constructor(io) {
     this.io = io;
     this.rooms = new Map();
+    // socketId -> { lastCheckTime, cooldownUntil }
+    this.faceCheckState = new Map();
   }
 
   async init() {
+    await faceDetection.init();
     return undefined;
   }
 
@@ -133,6 +140,7 @@ class MediaRelayServer {
     }
 
     this.stopPublisher(room, socket.id, true);
+    this.faceCheckState.delete(socket.id);
   }
 
   cleanupEmptyRoom(roomId) {
@@ -196,6 +204,27 @@ class MediaRelayServer {
           height,
           sentAt: sentAt || Date.now(),
         });
+
+        // Face detection for camera streams (sampled)
+        if ((sourceType || 'camera') === 'camera' && frame) {
+          const now = Date.now();
+          const state = this.faceCheckState.get(socket.id) || { lastCheckTime: 0, cooldownUntil: 0 };
+
+          if (now > state.cooldownUntil && now - state.lastCheckTime >= FACE_CHECK_INTERVAL_MS) {
+            state.lastCheckTime = now;
+            this.faceCheckState.set(socket.id, state);
+
+            // Run async, don't block the frame relay
+            const frameBuffer = Buffer.isBuffer(frame) ? frame : Buffer.from(frame);
+            faceDetection.hasDangerousFace(frameBuffer, 0.2).then((dangerous) => {
+              if (dangerous) {
+                console.log(`Face detected for ${socket.data.uuid}, sending force-camera-off`);
+                socket.emit('force-camera-off', { reason: '检测到人脸，摄像头已自动关闭' });
+                state.cooldownUntil = Date.now() + FACE_COOLDOWN_MS;
+              }
+            }).catch(() => {});
+          }
+        }
 
         callback({ ok: true });
       } catch (err) {

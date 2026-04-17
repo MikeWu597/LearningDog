@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Popup, Stepper, Space, Input } from 'antd-mobile';
+import { Button, Popup, Stepper, Space, Input, Toast } from 'antd-mobile';
+import { apiUploadFile, apiGetFiles, apiDeleteFile, getFileDownloadUrl } from '../utils/api';
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -9,9 +10,11 @@ function formatTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) {
+export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate, uuid, files, onFilesChange, sharedFileId, onShareFile, onUnshareFile, messages, messageAcks, onSendMessage, onAckMessage, roomUsers }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [timerOpen, setTimerOpen] = useState(false);
+  const [fileOpen, setFileOpen] = useState(false);
+  const [msgOpen, setMsgOpen] = useState(false);
   const [statusText, setStatusText] = useState(emoji || '');
 
   useEffect(() => { setStatusText(emoji || ''); }, [emoji]);
@@ -63,6 +66,60 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
     onTimerUpdate({ mode: 'up', running: false, seconds: 0 });
   };
 
+  // --- File management ---
+  const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const result = await apiUploadFile(uuid, file);
+      if (result.ok) {
+        Toast.show({ content: '上传成功' });
+        const updated = await apiGetFiles(uuid);
+        onFilesChange(updated);
+      } else {
+        Toast.show({ content: result.error || '上传失败' });
+      }
+    } catch {
+      Toast.show({ content: '上传失败' });
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    const result = await apiDeleteFile(fileId, uuid);
+    if (result.ok) {
+      const updated = await apiGetFiles(uuid);
+      onFilesChange(updated);
+      Toast.show({ content: '已删除' });
+    }
+  };
+
+  const isPdf = (mimeType) => mimeType === 'application/pdf';
+  const isAudio = (mimeType) => mimeType?.startsWith('audio/');
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  };
+
+  // --- Message ---
+  const [msgText, setMsgText] = useState('');
+  const [msgDetailId, setMsgDetailId] = useState(null);
+
+  const handleSendMsg = () => {
+    const text = msgText.trim();
+    if (!text) return;
+    onSendMessage(text);
+    setMsgText('');
+  };
+
   return (
     <>
       <div style={{
@@ -78,6 +135,12 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
         </Button>
         <Button size="small" onClick={() => setTimerOpen(true)} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
           ⏱️ {timer?.running ? formatTime(localSeconds) : '计时器'}
+        </Button>
+        <Button size="small" onClick={() => setFileOpen(true)} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
+          📁 文件
+        </Button>
+        <Button size="small" onClick={() => setMsgOpen(true)} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
+          💬 消息{(messages || []).length > 0 ? ` (${(messages || []).length})` : ''}
         </Button>
       </div>
 
@@ -126,6 +189,111 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate }) 
           </div>
         </Space>
       </Popup>
+
+      {/* File Popup */}
+      <Popup visible={fileOpen} onMaskClick={() => setFileOpen(false)} bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 16, maxHeight: '60vh', overflow: 'auto' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 12 }}>文件管理</div>
+        <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
+        <Button block color="primary" onClick={() => fileInputRef.current?.click()} loading={uploading} style={{ marginBottom: 12 }}>
+          📤 上传文件
+        </Button>
+        {(files || []).length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#999', padding: 16 }}>暂无文件</div>
+        ) : (files || []).map(f => (
+          <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.originalName}</div>
+              <div style={{ fontSize: 10, color: '#999' }}>{formatSize(f.size)}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {sharedFileId === f.id ? (
+                <Button size="mini" color="danger" onClick={() => onUnshareFile()}>取消</Button>
+              ) : (
+                <Button size="mini" onClick={() => onShareFile(f.id, f.originalName, f.mimeType)}>共享</Button>
+              )}
+              {(isPdf(f.mimeType) || isAudio(f.mimeType)) && (
+                <Button size="mini" onClick={() => { setPreviewFile(f); setFileOpen(false); }}>预览</Button>
+              )}
+              <a href={getFileDownloadUrl(f.id)} download><Button size="mini">下载</Button></a>
+              <Button size="mini" color="danger" onClick={() => handleDeleteFile(f.id)}>删除</Button>
+            </div>
+          </div>
+        ))}
+      </Popup>
+
+      {/* Message Popup */}
+      <Popup visible={msgOpen} onMaskClick={() => setMsgOpen(false)} bodyStyle={{ borderTopLeftRadius: 12, borderTopRightRadius: 12, padding: 16, maxHeight: '60vh', overflow: 'auto' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 12 }}>消息</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <Input
+            value={msgText}
+            onChange={val => setMsgText(val)}
+            placeholder="输入消息..."
+            maxLength={200}
+            style={{ flex: 1 }}
+          />
+          <Button color="primary" size="small" onClick={handleSendMsg}>发送</Button>
+        </div>
+        {(messages || []).length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#999', padding: 16 }}>暂无消息</div>
+        ) : [...(messages || [])].reverse().map(msg => {
+          const acks = (messageAcks || {})[msg.id] || [];
+          const isMine = msg.senderUuid === uuid;
+          const expanded = msgDetailId === msg.id;
+          return (
+            <div key={msg.id} style={{ marginBottom: 8, padding: '6px 8px', background: isMine ? '#e6f4ff' : '#f5f5f5', borderRadius: 6, fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                <strong>{msg.senderName}</strong>
+                <span style={{ color: '#999', fontSize: 10 }}>{msg.createdAt?.slice(11, 16)}</span>
+              </div>
+              <div style={{ marginBottom: 4 }}>{msg.content}</div>
+              {isMine ? (
+                <div>
+                  <span style={{ color: '#1677ff', fontSize: 10, cursor: 'pointer' }}
+                    onClick={() => setMsgDetailId(expanded ? null : msg.id)}>
+                    签收 {acks.length}/{(roomUsers || []).length} {expanded ? '▲' : '▼'}
+                  </span>
+                  {expanded && (roomUsers || []).map(u => {
+                    const ack = acks.find(a => a.userUuid === u.uuid);
+                    return (
+                      <div key={u.uuid} style={{ fontSize: 10, color: ack ? '#52c41a' : '#999' }}>
+                        {u.username}: {ack ? `✅ ${ack.ackedAt?.slice(11, 16)}` : '⏳ 未签收'}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                !(acks.find(a => a.userUuid === uuid)) && (
+                  <Button size="mini" color="primary" onClick={() => onAckMessage(msg.id)}>签收</Button>
+                )
+              )}
+            </div>
+          );
+        })}
+      </Popup>
+
+      {/* File preview overlay */}
+      {previewFile && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', color: '#fff' }}>
+            <span style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{previewFile.originalName}</span>
+            <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+              <a href={getFileDownloadUrl(previewFile.id)} download style={{ color: '#69b1ff', fontSize: 14 }}>💾</a>
+              <span onClick={() => setPreviewFile(null)} style={{ cursor: 'pointer', fontSize: 18 }}>✕</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {isPdf(previewFile.mimeType) && (
+              <iframe src={getFileDownloadUrl(previewFile.id, true)} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF" />
+            )}
+            {isAudio(previewFile.mimeType) && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <audio controls src={getFileDownloadUrl(previewFile.id, true)} style={{ width: '80%' }} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -163,6 +163,18 @@ export default function Room() {
     return () => { c1(); c2(); c3(); };
   }, [on, user?.uuid]);
 
+  // Force camera off (face detection)
+  useEffect(() => {
+    const cleanup = on('force-camera-off', ({ reason }) => {
+      cameraStreamRef.current?.getTracks().forEach(t => t.stop());
+      cameraStreamRef.current = null;
+      setCameraOn(false);
+      setLocalStream(null);
+      Toast.show({ content: reason || '检测到人脸，摄像头已关闭' });
+    });
+    return cleanup;
+  }, [on]);
+
   const openCamera = async (facing, blur) => {
     try {
       await ensureNativeCameraPermission();
@@ -214,11 +226,26 @@ export default function Room() {
     if (localVideoRef.current) localVideoRef.current.srcObject = processed;
   };
 
+  // File sharing
+  const handleShareFile = (fileId, originalName, mimeType) => {
+    setMySharedFileId(fileId);
+    emit('file-share', { roomId, fileId, originalName, mimeType });
+  };
+  const handleUnshareFile = () => {
+    setMySharedFileId(null);
+    emit('file-unshare', { roomId });
+  };
+
+  // Messaging
+  const handleSendMessage = (content) => { emit('room-message', { roomId, content }); };
+  const handleAckMessage = (messageId) => { emit('message-ack', { messageId, roomId }); };
+
   const handleLeave = async () => {
     closeAll();
     localStream?.getTracks().forEach(t => t.stop());
     cameraStreamRef.current?.getTracks().forEach(t => t.stop());
     emit('leave-room', {});
+    setMessages([]); setMessageAcks({}); setSharedFiles({}); setMySharedFileId(null);
     await apiLeaveRoom(roomId, user.uuid);
     navigate('/rooms');
   };
@@ -303,6 +330,8 @@ export default function Room() {
           remoteStreams={remoteStreams}
           widgets={widgets}
           roomUsers={roomUsers}
+          sharedFiles={sharedFiles}
+          mySharedFileId={mySharedFileId}
         />
       </div>
 
@@ -311,7 +340,32 @@ export default function Room() {
         timer={myTimer}
         onEmojiChange={handleEmojiChange}
         onTimerUpdate={handleTimerUpdate}
+        uuid={user?.uuid}
+        files={myFiles}
+        onFilesChange={setMyFiles}
+        sharedFileId={mySharedFileId}
+        onShareFile={handleShareFile}
+        onUnshareFile={handleUnshareFile}
+        messages={messages}
+        messageAcks={messageAcks}
+        onSendMessage={handleSendMessage}
+        onAckMessage={handleAckMessage}
+        roomUsers={roomUsers}
       />
+
+      {/* Incoming message dialog */}
+      {incomingMsg && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 20, margin: 20, maxWidth: 320, width: '80%' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: 8 }}>来自 {incomingMsg.senderName} 的消息</div>
+            <div style={{ fontSize: 16, marginBottom: 16 }}>{incomingMsg.content}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button block color="primary" onClick={() => { handleAckMessage(incomingMsg.id); setIncomingMsg(null); }}>签收</Button>
+              <Button block onClick={() => setIncomingMsg(null)}>关闭</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

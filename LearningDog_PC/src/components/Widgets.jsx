@@ -281,7 +281,7 @@ export default function Widgets({ emoji, timer, onEmojiChange, onTimerUpdate, uu
 
   return (
     <>
-      <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8, background: '#dbeafe' }}>
+      <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', gap: 8 }}>
         <Popover content={statusContent} title="设置状态" trigger="click" placement="top">
           <Button icon={<EditOutlined />} style={{ color: '#1e3a5f', background: 'rgba(255,255,255,0.7)', border: '1px solid #bfdbfe' }}>
             {emoji || '状态'}

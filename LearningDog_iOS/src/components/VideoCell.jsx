@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { getFileDownloadUrl } from '../utils/api';
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -17,10 +18,12 @@ export default function VideoCell({
   emoji,
   timer,
   networkStatus = 'good',
+  sharedFile,
 }) {
   const internalVideoRef = useRef(null);
   const videoEl = externalVideoRef || internalVideoRef;
   const [timerDisplay, setTimerDisplay] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     const el = videoEl.current;
@@ -116,6 +119,41 @@ export default function VideoCell({
           color: '#fff', padding: '1px 6px', borderRadius: 3, fontSize: 11, fontFamily: 'monospace',
         }}>
           {timer.mode === 'down' ? '⏬' : '⏫'} {formatTime(timerDisplay)}
+        </div>
+      )}
+
+      {/* Shared file icon - top right */}
+      {sharedFile && (
+        <div onClick={() => setShowPreview(true)} style={{
+          position: 'absolute', top: 4, right: 4,
+          background: 'rgba(24,144,255,0.85)', color: '#fff',
+          padding: '3px 6px', borderRadius: 4, fontSize: 14, cursor: 'pointer',
+        }} title={sharedFile.originalName || '查看共享文件'}>📄</div>
+      )}
+
+      {/* File preview overlay */}
+      {showPreview && sharedFile && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 6px', color: '#fff', fontSize: 10 }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{sharedFile.originalName || '文件'}</span>
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <a href={getFileDownloadUrl(sharedFile.fileId)} download style={{ color: '#69b1ff' }}>💾</a>
+              <span onClick={() => setShowPreview(false)} style={{ cursor: 'pointer' }}>✕</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            {sharedFile.mimeType === 'application/pdf' ? (
+              <iframe src={getFileDownloadUrl(sharedFile.fileId, true)} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF" />
+            ) : sharedFile.mimeType?.startsWith('audio/') ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <audio controls src={getFileDownloadUrl(sharedFile.fileId, true)} style={{ width: '80%' }} />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff' }}>
+                <a href={getFileDownloadUrl(sharedFile.fileId)} download style={{ color: '#69b1ff', fontSize: 12 }}>📥 下载文件</a>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

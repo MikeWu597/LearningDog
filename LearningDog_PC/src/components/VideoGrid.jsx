@@ -59,12 +59,12 @@ export default function VideoGrid({
       <div
         key={`empty-${cells.length}`}
         style={{
-          background: '#2a2a3e',
+          background: '#dbeafe',
           borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#666',
+          color: '#7ba3cc',
           fontSize: 14,
         }}
       >

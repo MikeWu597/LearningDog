@@ -170,6 +170,23 @@ export default function Room() {
     return () => { cleanupMsg(); cleanupAck(); cleanupHistory(); };
   }, [on, user?.uuid]);
 
+  // Force camera off (face detection)
+  useEffect(() => {
+    const cleanup = on('force-camera-off', ({ reason }) => {
+      cameraStreamRef.current?.getTracks().forEach(t => t.stop());
+      cameraStreamRef.current = null;
+      setCameraOn(false);
+      if (screenOn && screenStreamRef.current) {
+        setLocalSourceType('screen');
+      } else {
+        setLocalSourceType(null);
+        setLocalStream(null);
+      }
+      message.warning(reason || '检测到人脸，摄像头已关闭');
+    });
+    return cleanup;
+  }, [on, screenOn]);
+
   // Start camera
   const startCamera = async () => {
     try {
