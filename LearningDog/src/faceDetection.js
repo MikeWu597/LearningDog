@@ -1,4 +1,5 @@
-const ort = require('onnxruntime-node');
+let ort;
+try { ort = require('onnxruntime-node'); } catch { ort = require('onnxruntime-web'); }
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
