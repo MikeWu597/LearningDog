@@ -5,6 +5,8 @@ const faceDetection = require('../faceDetection');
 
 const FACE_CHECK_INTERVAL_MS = 3000; // Check every 3 seconds per user
 const FACE_COOLDOWN_MS = 10000; // After forcing camera off, wait before checking again
+const FOCUS_TIMEOUT_MS = 60000; // End focus if no frame received for 60 seconds
+const FOCUS_CHECK_INTERVAL_MS = 30000; // Check for stale focus sessions every 30 seconds
 
 class MediaRelayServer {
   constructor(io) {
@@ -12,11 +14,27 @@ class MediaRelayServer {
     this.rooms = new Map();
     // socketId -> { lastCheckTime, cooldownUntil }
     this.faceCheckState = new Map();
+    // uuid -> lastFrameTime (ms) — tracks when each user last sent a video frame
+    this.lastFrameByUuid = new Map();
+    this._focusCheckTimer = null;
   }
 
   async init() {
     await faceDetection.init();
+    this._startFocusChecker();
     return undefined;
+  }
+
+  _startFocusChecker() {
+    this._focusCheckTimer = setInterval(() => {
+      const now = Date.now();
+      for (const [uuid, lastTime] of this.lastFrameByUuid.entries()) {
+        if (now - lastTime >= FOCUS_TIMEOUT_MS) {
+          this._endFocus(uuid);
+          this.lastFrameByUuid.delete(uuid);
+        }
+      }
+    }, FOCUS_CHECK_INTERVAL_MS);
   }
 
   getOrCreateRoom(roomId) {
@@ -73,10 +91,7 @@ class MediaRelayServer {
 
     room.publishers.delete(socketId);
 
-    // Auto-end focus session when video stream stops
-    if (publisher.uuid) {
-      this._endFocus(publisher.uuid);
-    }
+    // Focus is now tracked by frame activity, not by publish-state
 
     if (notify) {
       this.io.to(room.socketRoom).emit('media:stream-stopped', {
@@ -163,8 +178,7 @@ class MediaRelayServer {
 
         if (active) {
           const publisher = this.upsertPublisher(room, socket, sourceType || 'camera');
-          // Auto-start focus when video stream begins
-          this._startFocus(socket.data.uuid, roomId || socket.data.roomId);
+          // Focus is now tracked by frame activity in media:frame handler
           socket.to(room.socketRoom).emit('media:stream-started', publisher);
         } else {
           this.stopPublisher(room, socket.id, true);
@@ -192,6 +206,17 @@ class MediaRelayServer {
         publisher.updatedAt = Date.now();
         publisher.width = width;
         publisher.height = height;
+
+        // Track focus by actual frame activity (uuid-based, survives reconnect)
+        const userUuid = socket.data.uuid;
+        if (userUuid) {
+          const hadFrameBefore = this.lastFrameByUuid.has(userUuid);
+          this.lastFrameByUuid.set(userUuid, Date.now());
+          if (!hadFrameBefore) {
+            // First frame from this user — start a focus session
+            this._startFocus(userUuid, roomId || socket.data.roomId);
+          }
+        }
 
         socket.to(room.socketRoom).emit('media:frame', {
           socketId: socket.id,
